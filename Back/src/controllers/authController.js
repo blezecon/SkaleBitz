@@ -1,12 +1,16 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import createError from "http-errors";
 import User from "../models/User.js";
 import { signupSchema, signinSchema } from "../validation/authSchemas.js";
-import { JWT_SECRET, JWT_EXPIRES_IN } from "../config/constants.js";
+import { JWT_SECRET, JWT_EXPIRES_IN, APP_BASE_URL, FRONTEND_BASE_URL } from "../config/constants.js";
+import { sendVerificationEmail } from "../utils/mailer.js";
 
 const signToken = (user) =>
   jwt.sign({ sub: user._id, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+const makeVerifyToken = () => crypto.randomBytes(32).toString("hex");
 
 export const signup = async (req, res) => {
   const { error, value } = signupSchema.validate(req.body);
@@ -17,12 +21,23 @@ export const signup = async (req, res) => {
   if (exists) throw createError(409, "Email already registered");
 
   const hashed = await bcrypt.hash(password, 12);
-  const user = await User.create({ email, password: hashed, name });
-  const token = signToken(user);
+  const token = makeVerifyToken();
+  const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  const user = await User.create({
+    email,
+    password: hashed,
+    name,
+    verified: false,
+    verificationToken: token,
+    verificationTokenExpires: tokenExpiry,
+  });
+
+  const verifyLink = `${APP_BASE_URL}/api/auth/verify?token=${token}`;
+  await sendVerificationEmail(email, verifyLink);
 
   res.status(201).json({
-    user: { id: user._id, email: user.email, name: user.name },
-    token,
+    message: "Signup successful. Check your email to verify your account.",
   });
 };
 
@@ -37,9 +52,55 @@ export const signin = async (req, res) => {
   const match = await bcrypt.compare(password, user.password);
   if (!match) throw createError(401, "Invalid credentials");
 
+  if (!user.verified) throw createError(403, "Please verify your email first");
+
   const token = signToken(user);
   res.json({
     user: { id: user._id, email: user.email, name: user.name },
     token,
   });
+};
+
+export const verifyEmail = async (req, res) => {
+  const { token } = req.query;
+  if (!token) throw createError(400, "Missing token");
+
+  const user = await User.findOne({
+    verificationToken: token,
+    verificationTokenExpires: { $gt: new Date() },
+  });
+  if (!user) throw createError(400, "Invalid or expired token");
+
+  user.verified = true;
+  user.verificationToken = undefined;
+  user.verificationTokenExpires = undefined;
+  await user.save();
+
+  // Redirect only if you actually serve the page at that path.
+  if (FRONTEND_BASE_URL) {
+    return res.redirect(`${FRONTEND_BASE_URL}/login-registration.html?verified=1`);
+  }
+
+  return res.json({ message: "Email verified. You can now sign in." });
+};
+
+// Optional: resend verification
+export const resendVerification = async (req, res) => {
+  const { email } = req.body;
+  if (!email) throw createError(400, "Email is required");
+
+  const user = await User.findOne({ email });
+  if (!user) throw createError(404, "User not found");
+  if (user.verified) return res.json({ message: "Already verified" });
+
+  const token = makeVerifyToken();
+  const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
+  user.verificationToken = token;
+  user.verificationTokenExpires = tokenExpiry;
+  await user.save();
+
+  const verifyLink = `${APP_BASE_URL}/api/auth/verify?token=${token}`;
+  await sendVerificationEmail(email, verifyLink);
+
+  res.json({ message: "Verification email sent" });
 };
