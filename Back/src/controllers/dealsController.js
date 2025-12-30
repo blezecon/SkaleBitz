@@ -214,14 +214,6 @@ export const getDealCashflows = async (req, res, next) => {
 
     const investments = await Investment.find({ dealId: deal._id }).sort({ createdAt: 1 }).lean();
     const investmentIds = investments.map((inv) => inv._id);
-    const requesterId = req.user?.id ? String(req.user.id) : null;
-    const isMsmeOwner = requesterId && deal.msmeUserId && String(deal.msmeUserId) === requesterId;
-    const isInvestor =
-      requesterId && investments.some((inv) => inv.investorId && String(inv.investorId) === requesterId);
-
-    if (!isMsmeOwner && !isInvestor) {
-      throw createError(403, "Forbidden");
-    }
 
     const cadenceDays = cadenceToDays(deal.repaymentCadence);
 

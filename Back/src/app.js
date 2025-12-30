@@ -3,7 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import compression from "compression";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { cacheAndDedupe, CACHE_CONTROL_VALUE } from "./middleware/cacheAndDedupe.js";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/user.js";
@@ -26,13 +26,13 @@ app.use((req, res, next) => {
   next();
 });
 
-const generalLimiter = rateLimit({
+const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
 
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip,
+  keyGenerator: (req) => ipKeyGenerator(req),
   // Heavy endpoints are handled earlier with stricter limits.
 });
 
@@ -41,17 +41,18 @@ const heavyLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip,
+  keyGenerator: (req) => ipKeyGenerator(req),
 });
+
+app.use("/api", apiLimiter);
 
 // Apply heavy protections before routing to expensive endpoints.
 app.use("/api/deals", cacheAndDedupe, heavyLimiter, dealRoutes);
 app.use("/api/stats", cacheAndDedupe, heavyLimiter, statsRoutes);
 
-// General limiter for remaining API traffic.
-app.use("/api/auth", generalLimiter, authRoutes);
-app.use("/api/users", generalLimiter, userRoutes);
-app.get("/api/health", generalLimiter, (_req, res) => res.json({ ok: true }));
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.use(errorHandler);
 
