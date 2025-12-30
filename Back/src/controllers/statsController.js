@@ -8,6 +8,9 @@ export const getOverviewStats = async (_req, res) => {
 
   const [summary] = await Deal.aggregate([
     {
+      $match: { verified: true },
+    },
+    {
       $group: {
         _id: null,
         activeCapital: {
@@ -64,10 +67,20 @@ export const getOverviewStats = async (_req, res) => {
       stats.breakdown.cardVolume + stats.breakdown.bankVolume + stats.breakdown.payoutVolume;
   }
 
-  const featuredDeals = await Deal.find()
-    .sort({ createdAt: -1 })
+  let featuredDeals = await Deal.find({
+    status: { $regex: /^active$/i },
+    verified: true,
+  })
+    .sort({ yieldPct: -1, amount: -1, createdAt: -1 })
     .limit(3)
-    .select("name sector amount yieldPct status location tenorMonths risk");
+    .select("name sector amount yieldPct status location tenorMonths risk liveVolume");
+
+  if (featuredDeals.length === 0) {
+    featuredDeals = await Deal.find({ verified: true })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .select("name sector amount yieldPct status location tenorMonths risk liveVolume");
+  }
 
   res.json({ ...stats, featuredDeals });
 };

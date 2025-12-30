@@ -31,7 +31,7 @@ const userLimiter = rateLimit({
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/users", userLimiter, userRoutes);
 app.use("/api/deals", userLimiter, dealRoutes);
-app.use("/api/stats", statsRoutes);
+app.use("/api/stats", userLimiter, statsRoutes);
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.use(errorHandler);

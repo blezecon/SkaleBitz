@@ -6,13 +6,76 @@ const getDealModel = () => createDealModel(getDealsConnection());
 
 export const listDeals = async (_req, res) => {
   const Deal = getDealModel();
-  const deals = await Deal.find().sort({ createdAt: -1 });
+  const deals = await Deal.find({ verified: true }).sort({ createdAt: -1 });
   res.json({ deals });
 };
 
 export const getDeal = async (req, res) => {
   const Deal = getDealModel();
-  const deal = await Deal.findById(req.params.id);
+  const deal = await Deal.findOne({ _id: req.params.id, verified: true });
   if (!deal) throw createError(404, "Deal not found");
   res.json({ deal });
+};
+
+export const createDeal = async (req, res) => {
+  const Deal = getDealModel();
+  const {
+    businessName,
+    sector,
+    amount,
+    yieldPct,
+    status,
+    location,
+    tenorMonths,
+    risk,
+    liveVolume,
+    cardVolume,
+    bankVolume,
+    payoutVolume,
+    registeredAddress,
+    contactName,
+    contactEmail,
+    contactPhone,
+    website,
+    country,
+    repaymentCadence,
+    doc1,
+    doc2,
+    doc3DirectorId,
+    doc3AddressProof,
+  } = req.body;
+
+  const deal = await Deal.create({
+    name: businessName || "MSME Deal",
+    sector: sector || "MSME onboarding",
+    amount: amount ?? 0,
+    yieldPct: yieldPct ?? 0,
+    status: status || "Active",
+    location: location || country || registeredAddress || "",
+    tenorMonths: tenorMonths ?? null,
+    risk: risk || "On track",
+    liveVolume: liveVolume ?? 0,
+    cardVolume: cardVolume ?? 0,
+    bankVolume: bankVolume ?? 0,
+    payoutVolume: payoutVolume ?? 0,
+    registeredAddress,
+    contactName,
+    contactEmail,
+    contactPhone,
+    website,
+    country,
+    repaymentCadence,
+    msmeUserId: req.user?.id,
+    docs: {
+      doc1,
+      doc2,
+      doc3: {
+        directorId: doc3DirectorId,
+        addressProof: doc3AddressProof,
+      },
+    },
+    verified: true,
+  });
+
+  res.status(201).json({ deal });
 };
