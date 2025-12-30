@@ -6,6 +6,7 @@ import { createTransactionModel } from "../models/Transaction.js";
 import { createInvestmentWithTransaction } from "../services/investmentService.js";
 import User from "../models/User.js";
 import { DEFAULT_TENOR_MONTHS, ensureTenorMonths } from "../utils/tenor.js";
+import { invalidateCacheForPaths } from "../middleware/cacheAndDedupe.js";
 
 const getDealModel = () => createDealModel(getDealsConnection());
 const getInvestmentModel = () => createInvestmentModel(getDealsConnection());
@@ -510,6 +511,78 @@ export const createDeal = async (req, res) => {
   }
 
   res.status(201).json({ deal });
+};
+
+export const updateDealContact = async (req, res) => {
+  const Deal = getDealModel();
+
+  const user = await User.findById(req.user?.id).select("_id accountType");
+  if (!user) {
+    throw createError(404, "User not found");
+  }
+  if (user.accountType !== "msme") {
+    throw createError(403, "Only MSME users can update contact details");
+  }
+
+  const deal = await Deal.findById(req.params.id);
+  if (!deal || !deal.verified) {
+    throw createError(404, "Deal not found");
+  }
+  if (!deal.msmeUserId || String(deal.msmeUserId) !== String(user._id)) {
+    throw createError(403, "You can only update your own deals");
+  }
+
+  const { contactName, contactEmail, contactPhone, website } = req.body || {};
+  const updates = {};
+
+  if (contactName !== undefined) {
+    const value = typeof contactName === "string" ? contactName.trim() : "";
+    if (!value) {
+      throw createError(400, "Contact name is required");
+    }
+    updates.contactName = value;
+  }
+
+  if (contactEmail !== undefined) {
+    const value = typeof contactEmail === "string" ? contactEmail.trim() : "";
+    if (!value) {
+      throw createError(400, "Contact email is required");
+    }
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(value)) {
+      throw createError(400, "Contact email must be valid");
+    }
+    updates.contactEmail = value;
+  }
+
+  if (contactPhone !== undefined) {
+    const value = typeof contactPhone === "string" ? contactPhone.trim() : "";
+    if (value.length > 30) {
+      throw createError(400, "Contact phone is too long");
+    }
+    updates.contactPhone = value;
+  }
+
+  if (website !== undefined) {
+    const value = typeof website === "string" ? website.trim() : "";
+    if (value.length > 200) {
+      throw createError(400, "Website must be under 200 characters");
+    }
+    updates.website = value;
+  }
+
+  if (!Object.keys(updates).length) {
+    throw createError(400, "Provide at least one contact field to update");
+  }
+
+  Object.assign(deal, updates);
+  await deal.save();
+
+  invalidateCacheForPaths([`/api/deals/${deal._id}`, "/api/deals"]);
+
+  res.json({
+    deal: deal.toObject ? deal.toObject() : deal,
+  });
 };
 
 export const investInDeal = async (req, res) => {

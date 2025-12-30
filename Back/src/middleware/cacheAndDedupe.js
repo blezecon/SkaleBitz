@@ -177,4 +177,31 @@ export const cacheAndDedupe = (req, res, next) => {
   next();
 };
 
+export const invalidateCacheForPaths = (paths = []) => {
+  const targets = Array.isArray(paths) ? paths : [paths];
+  const normalizedTargets = targets
+    .map((path) => (typeof path === "string" ? path.trim() : ""))
+    .filter(Boolean)
+    .map((path) => (path.startsWith("/") ? path : `/${path}`));
+
+  const matchesTarget = (key, target) => {
+    if (!key.startsWith("GET:")) return false;
+    const withoutMethod = key.slice(4); // remove "GET:"
+    return withoutMethod.startsWith(`${target}`) || withoutMethod.startsWith(`${target}/`);
+  };
+
+  normalizedTargets.forEach((target) => {
+    for (const key of responseCache.keys()) {
+      if (matchesTarget(key, target)) {
+        responseCache.delete(key);
+      }
+    }
+    for (const key of inFlight.keys()) {
+      if (matchesTarget(key, target)) {
+        inFlight.delete(key);
+      }
+    }
+  });
+};
+
 export const CACHE_CONTROL_VALUE = CACHE_CONTROL_HEADER;
