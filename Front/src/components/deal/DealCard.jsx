@@ -1,4 +1,5 @@
 import { ArrowUpRight, Banknote, MapPin, ShieldCheck, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function DealCard({
   name = 'BrightMart Supplies',
@@ -58,13 +59,13 @@ export default function DealCard({
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <a
-          href={href}
+        <Link
+          to={href}
           className="inline-flex items-center gap-2 rounded-full bg-[#1F6FEB] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#1F6FEB33] transition hover:bg-[#195cc7]"
         >
           {ctaLabel}
           <ArrowUpRight size={16} />
-        </a>
+        </Link>
         <button className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]">
           View memo
         </button>

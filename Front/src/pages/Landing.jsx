@@ -11,6 +11,7 @@ import {
   Globe2,
   Users,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const categories = [
   { title: 'Working capital', desc: 'Bridge cash gaps for MSMEs with fast approval.', chips: ['Short tenor', 'Recurring'] },
@@ -45,12 +46,12 @@ export default function Landing() {
           <a className="transition hover:text-[#1F6FEB]" href="#cta">Get started</a>
         </nav>
         <div className="flex items-center gap-3">
-          <a className="hidden rounded-full px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:text-[#1F6FEB] md:inline-block" href="/login">
+          <Link className="hidden rounded-full px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:text-[#1F6FEB] md:inline-block" to="/login">
             Log in
-          </a>
-          <a className="rounded-full bg-[#1F6FEB] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#1F6FEB33] transition hover:bg-[#195cc7]" href="/register">
+          </Link>
+          <Link className="rounded-full bg-[#1F6FEB] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#1F6FEB33] transition hover:bg-[#195cc7]" to="/register">
             Join now
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -151,10 +152,10 @@ export default function Landing() {
               <h2 className="text-2xl font-semibold text-[#0F172A]">Featured MSME opportunities</h2>
               <p className="text-sm text-[#4B5563]">Curated, risk-screened deals with live utilization.</p>
             </div>
-            <a className="hidden items-center gap-2 text-sm font-semibold text-[#1F6FEB] hover:underline md:inline-flex" href="/deals">
+            <Link className="hidden items-center gap-2 text-sm font-semibold text-[#1F6FEB] hover:underline md:inline-flex" to="/deals">
               View all deals
               <ArrowRight size={16} />
-            </a>
+            </Link>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -192,10 +193,10 @@ export default function Landing() {
                   </span>
                 </div>
                 <div className="mt-4 flex gap-2">
-                  <a className="inline-flex items-center gap-2 rounded-full bg-[#1F6FEB] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#1F6FEB33] transition hover:bg-[#195cc7]" href="/deals">
+                  <Link className="inline-flex items-center gap-2 rounded-full bg-[#1F6FEB] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-[#1F6FEB33] transition hover:bg-[#195cc7]" to="/deals">
                     View deal
                     <ArrowRight size={14} />
-                  </a>
+                  </Link>
                   <button className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]">
                     View memo
                   </button>
@@ -303,10 +304,10 @@ export default function Landing() {
                 Join investors funding vetted MSMEs with real-time risk controls and transparent cashflows.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">              <a className="flex items-center gap-2 rounded-full bg-[#1F6FEB] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#1F6FEB33] transition hover:bg-[#195cc7]" href="/register">
+            <div className="flex flex-wrap items-center gap-3">              <Link className="flex items-center gap-2 rounded-full bg-[#1F6FEB] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#1F6FEB33] transition hover:bg-[#195cc7]" to="/register">
                 Create free account
                 <ArrowRight size={16} />
-              </a>
+              </Link>
               <a className="rounded-full border border-[#E5E7EB] px-5 py-3 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]" href="/contact">
                 Talk to sales
               </a>

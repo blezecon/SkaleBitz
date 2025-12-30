@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ArrowRight, Eye, EyeOff, Lock, Mail, ShieldCheck, User, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Register() {
   const [password, setPassword] = useState('');
@@ -126,7 +127,7 @@ export default function Register() {
               <label className="flex items-start gap-2 text-sm text-[#4B5563]">
                 <input type="checkbox" className="mt-1 h-4 w-4 rounded border-[#CBD5E1] text-[#1F6FEB] focus:ring-[#1F6FEB]" />
                 <span>
-                  I agree to the <a href="/terms" className="text-[#1F6FEB] underline">Terms</a> and <a href="/privacy" className="text-[#1F6FEB] underline">Privacy Policy</a>.
+                  I agree to the <Link to="/terms" className="text-[#1F6FEB] underline">Terms</Link> and <Link to="/privacy" className="text-[#1F6FEB] underline">Privacy Policy</Link>.
                 </span>
               </label>
 
@@ -143,9 +144,9 @@ export default function Register() {
 
             <p className="text-center text-sm text-[#4B5563]">
               Already have an account?{' '}
-              <a href="/login" className="text-[#1F6FEB] font-semibold hover:underline">
+              <Link to="/login" className="text-[#1F6FEB] font-semibold hover:underline">
                 Sign in
-              </a>
+              </Link>
             </p>
 
             <div className="rounded-2xl border border-[#E5E7EB] bg-[#F8FAFC] p-4 text-sm text-[#4B5563]">

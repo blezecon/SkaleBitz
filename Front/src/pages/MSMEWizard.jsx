@@ -13,6 +13,7 @@ import {
   Phone,
   Mail,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const steps = [
   { id: 1, title: 'Business profile' },
@@ -32,13 +33,13 @@ export default function MSMEWizard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <a
-              href="/dashboard"
+            <Link
+              to="/dashboard"
               className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]"
             >
               <ArrowLeft size={16} />
               Back to dashboard
-            </a>
+            </Link>
             <div className="flex items-center gap-2 text-sm font-semibold text-[#1F6FEB]">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#E6F0FF] text-[#1F6FEB]">
                 <Sparkles size={18} />

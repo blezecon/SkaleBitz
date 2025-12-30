@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ArrowRight, Eye, EyeOff, Lock, Mail, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Login() {
   const [showPass, setShowPass] = useState(false);
@@ -31,7 +32,7 @@ export default function Login() {
             <div className="rounded-2xl border border-[#E5E7EB] bg-[#F8FAFC] p-4 text-sm text-[#4B5563]">
               <p className="text-[#0F172A] font-semibold">Need an account?</p>
               <p className="mt-1">
-                <a href="/register" className="text-[#1F6FEB] font-semibold hover:underline">Create one here</a> to start building compliant fintech flows.
+                <Link to="/register" className="text-[#1F6FEB] font-semibold hover:underline">Create one here</Link> to start building compliant fintech flows.
               </p>
             </div>
           </div>
@@ -74,7 +75,7 @@ export default function Login() {
                   <input type="checkbox" className="h-4 w-4 rounded border-[#CBD5E1] text-[#1F6FEB] focus:ring-[#1F6FEB]" />
                   <span>Remember me</span>
                 </label>
-                <a href="/reset" className="text-[#1F6FEB] font-semibold hover:underline">Forgot password?</a>
+                <Link to="/reset" className="text-[#1F6FEB] font-semibold hover:underline">Forgot password?</Link>
               </div>
             </div>
 
@@ -88,9 +89,9 @@ export default function Login() {
 
             <p className="text-center text-sm text-[#4B5563]">
               New to FintechOS?{' '}
-              <a href="/register" className="text-[#1F6FEB] font-semibold hover:underline">
+              <Link to="/register" className="text-[#1F6FEB] font-semibold hover:underline">
                 Create an account
-              </a>
+              </Link>
             </p>
           </form>
         </div>

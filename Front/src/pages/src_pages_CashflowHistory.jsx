@@ -1,4 +1,5 @@
 import { ArrowLeft, Calendar, LineChart, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function CashflowHistory() {
   const flows = [
@@ -11,13 +12,13 @@ export default function CashflowHistory() {
     <div className="min-h-screen bg-[#F6F9FC] text-[#111827] px-6 py-10">
       <div className="mx-auto flex max-w-5xl flex-col gap-8">
         <div className="flex items-center gap-3">
-          <a
-            href="/deals/brightmart" // adjust to your deal detail route
+          <Link
+            to="/deals/brightmart" // adjust to your deal detail route
             className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]"
           >
             <ArrowLeft size={16} />
             Back to deal
-          </a>
+          </Link>
           <div className="flex items-center gap-2 text-sm font-semibold text-[#1F6FEB]">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#E6F0FF] text-[#1F6FEB]">
               <Sparkles size={18} />

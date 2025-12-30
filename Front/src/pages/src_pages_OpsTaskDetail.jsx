@@ -1,4 +1,5 @@
 import { ArrowLeft, CheckCircle2, Clock, ShieldCheck, Tag, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function OpsTaskDetail() {
   // Replace with router params and real data
@@ -17,13 +18,13 @@ export default function OpsTaskDetail() {
     <div className="min-h-screen bg-[#F6F9FC] text-[#111827] px-6 py-10">
       <div className="mx-auto flex max-w-4xl flex-col gap-8">
         <div className="flex items-center gap-3">
-          <a
-            href="/ops"
+          <Link
+            to="/ops"
             className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]"
           >
             <ArrowLeft size={16} />
             Back to queue
-          </a>
+          </Link>
           <div className="inline-flex items-center gap-2 rounded-full bg-[#F8FAFC] px-3 py-2 text-xs font-semibold text-[#4B5563] border border-[#E5E7EB]">
             <Tag size={14} className="text-[#1F6FEB]" />
             {task.type}

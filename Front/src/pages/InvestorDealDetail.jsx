@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const repaymentSchedule = [
   { cycle: 'Cycle 12', date: 'Mar 18, 2025', amount: '$18,400', status: 'Settled' },
@@ -37,13 +38,13 @@ export default function InvestorDealDetail() {
         {/* Breadcrumb / Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <a
-              href="/dashboard"
+            <Link
+              to="/dashboard"
               className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]"
             >
               <ArrowLeft size={16} />
               Back to dashboard
-            </a>
+            </Link>
             <div className="flex items-center gap-2 text-sm font-semibold text-[#1F6FEB]">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#E6F0FF] text-[#1F6FEB]">
                 <Sparkles size={18} />
@@ -194,9 +195,12 @@ export default function InvestorDealDetail() {
                 </div>
               ))}
             </div>
-            <button className="mt-4 w-full rounded-full border border-[#E5E7EB] px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]">
-              View cashflow history
-            </button>
+            <Link
+              to="/deals/brightmart/cashflows"
+              className="mt-4 flex w-full items-center justify-center rounded-full border border-[#E5E7EB] px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]"
+            >     
+            View cashflow history
+            </Link>
           </div>
 
           <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-md shadow-[#E0E7FF]">

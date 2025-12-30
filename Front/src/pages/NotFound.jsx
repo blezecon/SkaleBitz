@@ -1,4 +1,5 @@
 import { ArrowLeft, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function NotFound() {
   return (
@@ -37,19 +38,19 @@ export default function NotFound() {
           </div>
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <a
-              href="/"
+            <Link
+              to="/"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#1F6FEB] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#1F6FEB33] transition hover:bg-[#195cc7]"
             >
               Back to home
               <ArrowLeft size={18} />
-            </a>
-            <a
-              href="/support"
+            </Link>
+            <Link
+              to="/support"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-5 py-3 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]"
             >
               Contact support
-            </a>
+            </Link>
           </div>
         </div>
       </div>
