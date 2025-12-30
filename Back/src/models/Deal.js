@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { DEFAULT_TENOR_MONTHS } from "../utils/tenor.js";
 
 const dealSchema = new mongoose.Schema(
   {
@@ -12,11 +13,14 @@ const dealSchema = new mongoose.Schema(
     website: { type: String, trim: true },
     country: { type: String, trim: true },
     repaymentCadence: { type: String, trim: true },
+    facilitySize: { type: Number, default: 10000 },
+    utilizedAmount: { type: Number, default: 0 },
     amount: { type: Number, required: true },
+    targetYield: { type: Number },  
     yieldPct: { type: Number, required: true },
     status: { type: String, default: "Active" },
     location: { type: String, trim: true },
-    tenorMonths: { type: Number },
+    tenorMonths: { type: Number, default: DEFAULT_TENOR_MONTHS },
     risk: { type: String, default: "On track" },
     liveVolume: { type: Number, default: 0 },
     cardVolume: { type: Number, default: 0 },
@@ -31,6 +35,14 @@ const dealSchema = new mongoose.Schema(
         addressProof: { type: String, trim: true },
       },
     },
+    revenue: { type: Number, min: 0 },
+    expenses: { type: Number, min: 0 },
+    burn_rate: { type: Number, min: 0 },
+    cash: { type: Number, min: 0 },
+    customers: { type: Number, min: 0 },
+    churn_rate: { type: Number, min: 0 },
+    acquisition_cost: { type: Number, min: 0 },
+    lifetime_value: { type: Number, min: 0 },
     verified: { type: Boolean, default: false },
   },
   { timestamps: true }
