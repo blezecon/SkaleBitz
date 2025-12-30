@@ -5,7 +5,7 @@ import createError from "http-errors";
 import User from "../models/User.js";
 import { signupSchema, signinSchema } from "../validation/authSchemas.js";
 import { JWT_SECRET, JWT_EXPIRES_IN, APP_BASE_URL, FRONTEND_BASE_URL } from "../config/constants.js";
-import { sendVerificationEmail } from "../utils/mailer.js";
+import { sendPasswordResetEmail, sendVerificationEmail } from "../utils/mailer.js";
 
 const signToken = (user) =>
   jwt.sign({ sub: user._id, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
@@ -57,7 +57,15 @@ export const signin = async (req, res) => {
 
   const token = signToken(user);
   res.json({
-    user: { id: user._id, email: user.email, name: user.name, accountType: user.accountType },
+    user: {
+      id: user._id,
+      email: user.email,
+      pendingEmail: user.pendingEmail,
+      name: user.name,
+      about: user.about,
+      avatarUrl: user.avatarUrl,
+      accountType: user.accountType,
+    },
     token,
   });
 };
@@ -114,4 +122,39 @@ export const deleteAccount = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+export const requestPasswordReset = async (req, res) => {
+  const { email } = req.body;
+  if (!email) throw createError(400, "Email is required");
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.json({ message: "If that account exists, we've emailed reset instructions." });
+  }
+  const token = makeVerifyToken();
+  user.passwordResetToken = token;
+  user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000);
+  await user.save();
+  const resetLinkBase = (FRONTEND_BASE_URL || "http://localhost:5173").replace(/\/$/, "");
+  const resetLink = `${resetLinkBase}/reset/confirm?token=${token}`;
+  await sendPasswordResetEmail(email, resetLink);
+  res.json({ message: "If that account exists, we've emailed reset instructions." });
+};
+export const resetPassword = async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) throw createError(400, "Token and password are required");
+  if (password.length < 8 || password.length > 128) {
+    throw createError(400, "Password must be between 8 and 128 characters");
+  }
+  const user = await User.findOne({
+    passwordResetToken: token,
+    passwordResetExpires: { $gt: new Date() },
+  });
+  if (!user) throw createError(400, "Invalid or expired token");
+  const hashed = await bcrypt.hash(password, 12);
+  user.password = hashed;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpires = undefined;
+  await user.save();
+  res.json({ message: "Password updated successfully" });
 };
