@@ -10,11 +10,30 @@ import userRoutes from "./routes/user.js";
 import dealRoutes from "./routes/deals.js";
 import statsRoutes from "./routes/stats.js";
 import errorHandler from "./middleware/errorHandler.js";
+import { FRONTEND_BASE_URL } from "./config/constants.js";
 
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+
+const allowedOrigins = [FRONTEND_BASE_URL].filter(Boolean);
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+
+    if (/^http:\/\/localhost(?::\d+)?$/i.test(origin)) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
+  },
+};
+
+app.use(cors(corsOptions));
 app.use(morgan("dev"));
 app.use(compression());
 app.use(express.json({ limit: "3mb" }));
@@ -52,6 +71,7 @@ app.use("/api/stats", cacheAndDedupe, heavyLimiter, statsRoutes);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.get("/health", (_req, res) => res.json({ ok: true }));
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.use(errorHandler);

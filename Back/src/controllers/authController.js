@@ -12,6 +12,13 @@ const signToken = (user) =>
 
 const makeVerifyToken = () => crypto.randomBytes(32).toString("hex");
 
+const getFrontendBaseUrl = () => {
+  if (!FRONTEND_BASE_URL) {
+    throw createError(500, "FRONTEND_BASE_URL is not configured");
+  }
+  return FRONTEND_BASE_URL;
+};
+
 export const signup = async (req, res) => {
   const { error, value } = signupSchema.validate(req.body);
   if (error) throw createError(400, error.details[0].message);
@@ -89,7 +96,6 @@ export const verifyEmail = async (req, res) => {
   user.verificationTokenExpires = undefined;
   await user.save();
 
-  // Redirect only if you actually serve the page at that path.
   if (FRONTEND_BASE_URL) {
     return res.redirect(`${FRONTEND_BASE_URL}/login-registration.html?verified=1`);
   }
@@ -139,7 +145,7 @@ export const requestPasswordReset = async (req, res) => {
   user.passwordResetToken = token;
   user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000);
   await user.save();
-  const resetLinkBase = (FRONTEND_BASE_URL || "http://localhost:5173").replace(/\/$/, "");
+  const resetLinkBase = getFrontendBaseUrl();
   const resetLink = `${resetLinkBase}/reset/confirm?token=${token}`;
   await sendPasswordResetEmail(email, resetLink);
   res.json({ message: "If that account exists, we've emailed reset instructions." });
