@@ -7,7 +7,7 @@ export default async function authRequired(req, _res, next) {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return next(createError(401, "Unauthorized"));
   }
-  
+
   const token = authHeader.split(" ")[1];
   try {
     const payload = jwt.verify(token, JWT_SECRET);

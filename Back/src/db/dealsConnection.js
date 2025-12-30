@@ -1,9 +1,22 @@
 import mongoose from "mongoose";
 import { createDealModel } from "../models/Deal.js";
+import { DEFAULT_TENOR_MONTHS } from "../utils/tenor.js";
 
 let dealsConnection;
 
-  export const initDealsConnection = async () => {
+const backfillTenorMonths = async (connection) => {
+  const Deal = createDealModel(connection);
+  const needsBackfill = await Deal.exists({
+    $or: [{ tenorMonths: { $exists: false } }, { tenorMonths: null }],
+  });
+  if (!needsBackfill) return;
+  await Deal.updateMany(
+    { $or: [{ tenorMonths: { $exists: false } }, { tenorMonths: null }] },
+    { $set: { tenorMonths: DEFAULT_TENOR_MONTHS } }
+  );
+};
+
+export const initDealsConnection = async () => {
   if (dealsConnection) return dealsConnection;
 
   if (!mongoose.connection.readyState) {
@@ -11,8 +24,8 @@ let dealsConnection;
   }
 
   dealsConnection = mongoose.connection;
-
   await seedDeals(dealsConnection);
+  await backfillTenorMonths(dealsConnection);
   console.log("Deals initialized on primary MongoDB connection");
   return dealsConnection;
 };
@@ -39,6 +52,9 @@ const seedDeals = async (connection) => {
       name: "BrightMart Supplies",
       sector: "Retail ops · Working capital",
       amount: 1500000,
+      facilitySize: 1500000,
+      utilizedAmount: 0,
+      targetYield: 11.8,
       yieldPct: 11.8,
       status: "Active",
       location: "Singapore",
@@ -55,6 +71,9 @@ const seedDeals = async (connection) => {
       name: "AgroLink MSME",
       sector: "Agri inputs · Inventory",
       amount: 900000,
+      facilitySize: 900000,
+      utilizedAmount: 0,
+      targetYield: 10.9,
       yieldPct: 10.9,
       status: "Active",
       location: "Malaysia",
@@ -71,6 +90,9 @@ const seedDeals = async (connection) => {
       name: "Nova Parts Co",
       sector: "Manufacturing · PO finance",
       amount: 1400000,
+      facilitySize: 1400000,
+      utilizedAmount: 0,
+      targetYield: 11.2,
       yieldPct: 11.2,
       status: "Pending",
       location: "Vietnam",

@@ -1,22 +1,35 @@
 import createError from "http-errors";
 import { getDealsConnection } from "../db/dealsConnection.js";
-import { createInvestmentModel } from "../models/Investment.js";
 import { createDealModel } from "../models/Deal.js";
-import {
-  createTransactionModel,
-  TRANSACTION_TYPES,
-} from "../models/Transaction.js";
+import { createInvestmentModel } from "../models/Investment.js";
+import { createTransactionModel, TRANSACTION_TYPES } from "../models/Transaction.js";
 import User from "../models/User.js";
 
 const getInvestmentModel = () => createInvestmentModel(getDealsConnection());
 const getTransactionModel = () => createTransactionModel(getDealsConnection());
 const getDealModel = () => createDealModel(getDealsConnection());
-const NON_REPLICA_SET_CODE = 20;
-const NON_REPLICA_TRANSACTION_MESSAGE =
-  "Transaction numbers are only allowed on a replica set member";
+const NON_REPLICA_SET_CODE = 20; // MongoDB error code when transactions are run on non-replica deployments
+const NON_REPLICA_TRANSACTION_MESSAGE = "Transaction numbers are only allowed on a replica set member";
 const REPAYMENT_TYPES = TRANSACTION_TYPES.filter((type) => type !== "invest");
 const logRollbackFailure = (message, error) => {
+  // Replace with structured logger when available
   console.error(message, error);
+};
+
+const resolveFacilitySize = (deal) => {
+  const raw = Number(deal?.facilitySize ?? deal?.amount ?? 10000);
+  return Number.isFinite(raw) && raw > 0 ? raw : 10000;
+};
+
+const getUtilizedAmount = async (Investment, dealId, session) => {
+  if (!dealId) return 0;
+  const pipeline = [
+    { $match: { dealId } },
+    { $group: { _id: null, total: { $sum: "$amount" } } },
+  ];
+  const agg = session ? Investment.aggregate(pipeline).session(session) : Investment.aggregate(pipeline);
+  const [result] = await agg;
+  return result?.total || 0;
 };
 
 const createInvestmentWithoutSession = async (
@@ -39,6 +52,21 @@ const createInvestmentWithoutSession = async (
   const deal = await Deal.findOne({ _id: dealId, verified: true });
   if (!deal) {
     throw createError(404, "Deal not found");
+  }
+
+  const facilitySize = resolveFacilitySize(deal);
+  const currentUtilized = await getUtilizedAmount(Investment, deal._id);
+  await Deal.updateOne({ _id: deal._id }, { $set: { utilizedAmount: currentUtilized } });
+  const capacityResult = await Deal.updateOne(
+    {
+      _id: deal._id,
+      verified: true,
+      $expr: { $lte: [{ $add: ["$utilizedAmount", amount] }, { $literal: facilitySize }] },
+    },
+    { $inc: { utilizedAmount: amount } }
+  );
+  if (!capacityResult.modifiedCount) {
+    throw createError(400, "Investment exceeds facility size");
   }
 
   const toUserId = requestedToUserId || deal.msmeUserId || investorId;
@@ -64,19 +92,13 @@ const createInvestmentWithoutSession = async (
     try {
       await Investment.deleteOne({ _id: investmentRecord._id });
     } catch (rollbackErr) {
-      logRollbackFailure(
-        "Failed to rollback investment after transaction error",
-        rollbackErr
-      );
+      logRollbackFailure("Failed to rollback investment after transaction error", rollbackErr);
     }
     try {
       investor.balance += amount;
       await investor.save();
     } catch (rollbackErr) {
-      logRollbackFailure(
-        "Failed to rollback investor balance after transaction error",
-        rollbackErr
-      );
+      logRollbackFailure("Failed to rollback investor balance after transaction error", rollbackErr);
     }
     throw err;
   }
@@ -137,11 +159,29 @@ export const createInvestmentWithTransaction = async ({
         throw createError(400, "Insufficient balance");
       }
 
-      const deal = await Deal.findOne({ _id: dealId, verified: true }).session(
-        session
-      );
+      const deal = await Deal.findOne({ _id: dealId, verified: true }).session(session);
       if (!deal) {
         throw createError(404, "Deal not found");
+      }
+
+      const facilitySize = resolveFacilitySize(deal);
+      const currentUtilized = await getUtilizedAmount(Investment, deal._id, session);
+      await Deal.updateOne(
+        { _id: deal._id },
+        { $set: { utilizedAmount: currentUtilized } },
+        { session }
+      );
+      const capacityResult = await Deal.updateOne(
+        {
+          _id: deal._id,
+          verified: true,
+          $expr: { $lte: [{ $add: ["$utilizedAmount", amount] }, { $literal: facilitySize }] },
+        },
+        { $inc: { utilizedAmount: amount } },
+        { session }
+      );
+      if (!capacityResult.modifiedCount) {
+        throw createError(400, "Investment exceeds facility size");
       }
 
       const toUserId = requestedToUserId || deal.msmeUserId || investorId;
@@ -217,9 +257,7 @@ export const recordRepaymentTransaction = async ({
 
   try {
     await session.withTransaction(async () => {
-      const investment = await Investment.findById(investmentId).session(
-        session
-      );
+      const investment = await Investment.findById(investmentId).session(session);
       if (!investment) {
         throw createError(404, "Investment not found");
       }

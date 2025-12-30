@@ -3,7 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import compression from "compression";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import { cacheAndDedupe, CACHE_CONTROL_VALUE } from "./middleware/cacheAndDedupe.js";
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/user.js";
 import dealRoutes from "./routes/deals.js";
@@ -17,21 +18,41 @@ app.use(cors());
 app.use(morgan("dev"));
 app.use(compression());
 app.use(express.json({ limit: "3mb" }));
+app.set("etag", "strong");
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+app.use((req, res, next) => {
+  if (req.method === "GET" && !res.getHeader("Cache-Control")) {
+    res.setHeader("Cache-Control", CACHE_CONTROL_VALUE);
+  }
+  next();
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
   max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req),
+  // Heavy endpoints are handled earlier with stricter limits.
 });
 
-const userLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
+const heavyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req),
 });
 
-app.use("/api/auth", authLimiter, authRoutes);
-app.use("/api/users", userLimiter, userRoutes);
-app.use("/api/deals", userLimiter, dealRoutes);
-app.use("/api/stats", userLimiter, statsRoutes);
+app.use("/api", apiLimiter);
+
+// Apply heavy protections before routing to expensive endpoints.
+app.use("/api/deals", cacheAndDedupe, heavyLimiter, dealRoutes);
+app.use("/api/stats", cacheAndDedupe, heavyLimiter, statsRoutes);
+
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.use(errorHandler);

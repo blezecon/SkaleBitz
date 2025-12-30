@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema(
     balance: { type: Number, default: 0 },
     accountType: { type: String, enum: ["investor", "msme"], required: true },
     dealId: { type: mongoose.Schema.Types.ObjectId, ref: "Deal", default: null },
+    termsAccepted: { type: Boolean, default: false },
+    termsAcceptedAt: { type: Date },
     verified: { type: Boolean, default: false },
     verificationToken: { type: String },
     verificationTokenExpires: { type: Date },
@@ -21,5 +23,8 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Remove this because it's duplicate:
+// userSchema.index({ email: 1 }, { unique: true });
 
 export default mongoose.model("User", userSchema);

@@ -6,7 +6,9 @@ import {
   getDealCashflows,
   investInDeal,
   listDealInvestments,
+  listDealInvestors,
   listDeals,
+  updateDealContact,
 } from "../controllers/dealsController.js";
 
 const router = Router();
@@ -14,8 +16,10 @@ const router = Router();
 router.get("/", authRequired, listDeals);
 router.get("/:id/cashflows", authRequired, getDealCashflows);
 router.get("/:id", authRequired, getDeal);
+router.get("/:id/investors", authRequired, listDealInvestors);
 router.get("/:id/investments", authRequired, listDealInvestments);
 router.post("/:id/invest", authRequired, investInDeal);
 router.post("/", authRequired, createDeal);
+router.put("/:id/contact", authRequired, updateDealContact);
 
 export default router;

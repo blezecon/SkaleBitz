@@ -5,6 +5,8 @@ import { createInvestmentModel } from "../models/Investment.js";
 import { createTransactionModel } from "../models/Transaction.js";
 import { createInvestmentWithTransaction } from "../services/investmentService.js";
 import User from "../models/User.js";
+import { DEFAULT_TENOR_MONTHS, ensureTenorMonths } from "../utils/tenor.js";
+import { invalidateCacheForPaths } from "../middleware/cacheAndDedupe.js";
 
 const getDealModel = () => createDealModel(getDealsConnection());
 const getInvestmentModel = () => createInvestmentModel(getDealsConnection());
@@ -21,6 +23,25 @@ const sanitizeUser = (user) => ({
   dealId: user.dealId,
   verified: user.verified,
 });
+
+const resolveFacilitySize = (deal) => {
+  const raw = Number(deal?.facilitySize ?? 10000);
+  return Number.isFinite(raw) && raw > 0 ? raw : 10000;
+};
+
+const resolveTargetYield = (deal) => {
+  const raw = Number(deal?.targetYield ?? deal?.yieldPct ?? 0);
+  return Number.isFinite(raw) ? raw : 0;
+};
+
+const buildUtilizationMap = async (dealIds, Investment) => {
+  if (!Array.isArray(dealIds) || dealIds.length === 0) return new Map();
+  const utilization = await Investment.aggregate([
+    { $match: { dealId: { $in: dealIds } } },
+    { $group: { _id: "$dealId", total: { $sum: "$amount" } } },
+  ]);
+  return new Map(utilization.map((entry) => [String(entry._id), entry.total || 0]));
+};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const cadenceToDays = (cadence) => {
@@ -40,6 +61,16 @@ const computeCycleNumber = ({ actualDate, baseDate, cadenceDays, fallbackIndex }
 };
 
 const PERCENT_TO_DECIMAL = 0.01;
+
+const serializeInvestment = (inv) => ({
+  id: inv._id,
+  amount: inv.amount,
+  status: inv.status,
+  createdAt: inv.createdAt,
+  investor: inv.investorId
+    ? { id: inv.investorId._id, name: inv.investorId.name, email: inv.investorId.email }
+    : null,
+});
 
 const buildRepaymentSchedule = (repayments, { cadence, startDate }) => {
   if (!Array.isArray(repayments) || repayments.length === 0) return [];
@@ -147,8 +178,28 @@ const computePerformanceMetrics = ({ repayments, cadence, startDate, totalInvest
 
 export const listDeals = async (_req, res) => {
   const Deal = getDealModel();
-  const deals = await Deal.find({ verified: true }).sort({ createdAt: -1 });
-  res.json({ deals });
+  const Investment = getInvestmentModel();
+  const deals = await Deal.find({ verified: true }).sort({ createdAt: -1 }).lean();
+  const utilizationMap = await buildUtilizationMap(
+    deals.map((deal) => deal._id),
+    Investment
+  );
+
+  res.json({
+    deals: deals.map((deal) => {
+      const facilitySize = resolveFacilitySize(deal);
+      const utilizedAmount = utilizationMap.get(String(deal._id)) || 0;
+      const normalizedYield = resolveTargetYield(deal);
+      return ensureTenorMonths({
+        ...deal,
+        facilitySize,
+        utilizedAmount,
+        remainingCapacity: Math.max(0, facilitySize - utilizedAmount),
+        targetYield: normalizedYield,
+        yieldPct: normalizedYield,
+      });
+    }),
+  });
 };
 
 export const getDeal = async (req, res) => {
@@ -163,6 +214,8 @@ export const getDeal = async (req, res) => {
   const investments = await Investment.find({ dealId }).sort({ createdAt: 1 }).lean();
   const investmentIds = investments.map((inv) => inv._id);
   const utilizedAmount = investments.reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
+  const facilitySize = resolveFacilitySize(deal);
+  const remainingCapacity = Math.max(0, facilitySize - utilizedAmount);
 
   let transactions = [];
   if (investmentIds.length) {
@@ -188,13 +241,20 @@ export const getDeal = async (req, res) => {
     cadence: deal.repaymentCadence,
     startDate,
     totalInvested: utilizedAmount,
-    facilitySize: deal.amount,
+    facilitySize,
   });
+
+  const dealPayload = ensureTenorMonths(deal.toObject ? deal.toObject() : deal);
+  const normalizedYield = resolveTargetYield(dealPayload);
 
   res.json({
     deal: {
-      ...deal.toObject(),
+      ...dealPayload,
+      targetYield: normalizedYield,
+      yieldPct: normalizedYield,
+      facilitySize,
       utilizedAmount,
+      remainingCapacity,
       inflows,
       outflows,
       cashflows,
@@ -214,14 +274,6 @@ export const getDealCashflows = async (req, res, next) => {
 
     const investments = await Investment.find({ dealId: deal._id }).sort({ createdAt: 1 }).lean();
     const investmentIds = investments.map((inv) => inv._id);
-    const requesterId = req.user?.id ? String(req.user.id) : null;
-    const isMsmeOwner = requesterId && deal.msmeUserId && String(deal.msmeUserId) === requesterId;
-    const isInvestor =
-      requesterId && investments.some((inv) => inv.investorId && String(inv.investorId) === requesterId);
-
-    if (!isMsmeOwner && !isInvestor) {
-      throw createError(403, "Forbidden");
-    }
 
     const cadenceDays = cadenceToDays(deal.repaymentCadence);
 
@@ -239,6 +291,7 @@ export const getDealCashflows = async (req, res, next) => {
     let principalTotal = 0;
     let yieldTotal = 0;
 
+    const dealYieldPct = resolveTargetYield(deal);
     const payouts = repayments
       .map((tx, idx) => {
         const actualDate = tx?.createdAt ? new Date(tx.createdAt) : null;
@@ -249,7 +302,7 @@ export const getDealCashflows = async (req, res, next) => {
           fallbackIndex: idx,
         });
         const principal = Number(tx.amount || 0);
-        const yieldAmount = principal * Number(deal.yieldPct || 0) * PERCENT_TO_DECIMAL;
+        const yieldAmount = principal * dealYieldPct * PERCENT_TO_DECIMAL;
         principalTotal += principal;
         yieldTotal += yieldAmount;
         return {
@@ -271,7 +324,8 @@ export const getDealCashflows = async (req, res, next) => {
       deal: {
         id: deal._id,
         name: deal.name,
-        yieldPct: deal.yieldPct,
+        yieldPct: dealYieldPct,
+        targetYield: dealYieldPct,
       },
       payouts,
       totals: {
@@ -298,15 +352,7 @@ export const listDealInvestments = async (req, res) => {
       .lean();
 
     res.json({
-      investments: investments.map((inv) => ({
-        id: inv._id,
-        amount: inv.amount,
-        status: inv.status,
-        createdAt: inv.createdAt,
-        investor: inv.investorId
-          ? { id: inv.investorId._id, name: inv.investorId.name, email: inv.investorId.email }
-          : null,
-      })),
+      investments: investments.map(serializeInvestment),
     });
   } catch (err) {
     if (process.env.NODE_ENV !== "production") {
@@ -316,16 +362,55 @@ export const listDealInvestments = async (req, res) => {
   }
 };
 
+export const listDealInvestors = async (req, res) => {
+  const Deal = getDealModel();
+  const Investment = getInvestmentModel();
+
+  try {
+    const deal = await Deal.findOne({ _id: req.params.id, verified: true }).lean();
+    if (!deal) throw createError(404, "Deal not found");
+
+    const user = await User.findById(req.user?.id).select("_id accountType").lean();
+    if (!user || user.accountType !== "msme") {
+      throw createError(403, "You are not authorized to view investors for this deal");
+    }
+
+    if (!deal.msmeUserId || String(deal.msmeUserId) !== String(user._id)) {
+      throw createError(403, "You can only view investors for your own deals");
+    }
+
+    const investments = await Investment.find({ dealId: deal._id })
+      .sort({ createdAt: -1 })
+      .populate({ path: "investorId", select: "name email" })
+      .lean();
+
+    res.json({
+      deal: { id: deal._id, name: deal.name },
+      investments: investments.map(serializeInvestment),
+    });
+  } catch (err) {
+    if (err.status) {
+      throw err;
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to list deal investors", err);
+    }
+    throw createError(500, "Unable to load investors");
+  }
+};
+
 export const createDeal = async (req, res) => {
   const Deal = getDealModel();
   const {
     businessName,
     sector,
     amount,
-    yieldPct,
+    yieldPct: yieldPctInput,
+    targetYield,
     status,
     location,
     tenorMonths,
+    facilitySize: facilitySizeInput,
     risk,
     liveVolume,
     cardVolume,
@@ -342,6 +427,14 @@ export const createDeal = async (req, res) => {
     doc2,
     doc3DirectorId,
     doc3AddressProof,
+    revenue,
+    expenses,
+    burn_rate,
+    cash,
+    customers,
+    churn_rate,
+    acquisition_cost,
+    lifetime_value,
   } = req.body;
 
   let userRecord = null;
@@ -355,14 +448,34 @@ export const createDeal = async (req, res) => {
     }
   }
 
+  const normalizedTargetYield = Number.isFinite(Number(targetYield ?? yieldPctInput))
+    ? Number(targetYield ?? yieldPctInput)
+    : null;
+  if (normalizedTargetYield == null) {
+    throw createError(400, "Target yield is required");
+  }
+
+  const amountProvided = Number.isFinite(Number(amount)) && Number(amount) > 0 ? Number(amount) : null;
+  const facilityProvided = facilitySizeInput !== undefined;
+  const facilityNumeric = Number(facilitySizeInput);
+  if (facilityProvided && (!Number.isFinite(facilityNumeric) || facilityNumeric <= 0)) {
+    throw createError(400, "Facility size must be a positive number");
+  }
+  const normalizedFacilitySize =
+    facilityProvided && Number.isFinite(facilityNumeric) && facilityNumeric > 0 ? facilityNumeric : 10000;
+  const finalAmount = amountProvided ?? normalizedFacilitySize;
+
   const deal = await Deal.create({
     name: businessName || "MSME Deal",
     sector: sector || "MSME onboarding",
-    amount: amount ?? 0,
-    yieldPct: yieldPct ?? 0,
+    amount: finalAmount,
+    facilitySize: normalizedFacilitySize,
+    utilizedAmount: 0,
+    targetYield: normalizedTargetYield,
+    yieldPct: normalizedTargetYield,
     status: status || "Active",
     location: location || country || registeredAddress || "",
-    tenorMonths: tenorMonths ?? null,
+    tenorMonths: tenorMonths ?? DEFAULT_TENOR_MONTHS,
     risk: risk || "On track",
     liveVolume: liveVolume ?? 0,
     cardVolume: cardVolume ?? 0,
@@ -384,6 +497,14 @@ export const createDeal = async (req, res) => {
         addressProof: doc3AddressProof,
       },
     },
+    revenue,
+    expenses,
+    burn_rate,
+    cash,
+    customers,
+    churn_rate,
+    acquisition_cost,
+    lifetime_value,
     verified: true,
   });
 
@@ -406,6 +527,78 @@ export const createDeal = async (req, res) => {
   }
 
   res.status(201).json({ deal });
+};
+
+export const updateDealContact = async (req, res) => {
+  const Deal = getDealModel();
+
+  const user = await User.findById(req.user?.id).select("_id accountType");
+  if (!user) {
+    throw createError(404, "User not found");
+  }
+  if (user.accountType !== "msme") {
+    throw createError(403, "Only MSME users can update contact details");
+  }
+
+  const deal = await Deal.findById(req.params.id);
+  if (!deal || !deal.verified) {
+    throw createError(404, "Deal not found");
+  }
+  if (!deal.msmeUserId || String(deal.msmeUserId) !== String(user._id)) {
+    throw createError(403, "You can only update your own deals");
+  }
+
+  const { contactName, contactEmail, contactPhone, website } = req.body || {};
+  const updates = {};
+
+  if (contactName !== undefined) {
+    const value = typeof contactName === "string" ? contactName.trim() : "";
+    if (!value) {
+      throw createError(400, "Contact name is required");
+    }
+    updates.contactName = value;
+  }
+
+  if (contactEmail !== undefined) {
+    const value = typeof contactEmail === "string" ? contactEmail.trim() : "";
+    if (!value) {
+      throw createError(400, "Contact email is required");
+    }
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(value)) {
+      throw createError(400, "Contact email must be valid");
+    }
+    updates.contactEmail = value;
+  }
+
+  if (contactPhone !== undefined) {
+    const value = typeof contactPhone === "string" ? contactPhone.trim() : "";
+    if (value.length > 30) {
+      throw createError(400, "Contact phone is too long");
+    }
+    updates.contactPhone = value;
+  }
+
+  if (website !== undefined) {
+    const value = typeof website === "string" ? website.trim() : "";
+    if (value.length > 200) {
+      throw createError(400, "Website must be under 200 characters");
+    }
+    updates.website = value;
+  }
+
+  if (!Object.keys(updates).length) {
+    throw createError(400, "Provide at least one contact field to update");
+  }
+
+  Object.assign(deal, updates);
+  await deal.save();
+
+  invalidateCacheForPaths([`/api/deals/${deal._id}`, "/api/deals"]);
+
+  res.json({
+    deal: deal.toObject ? deal.toObject() : deal,
+  });
 };
 
 export const investInDeal = async (req, res) => {

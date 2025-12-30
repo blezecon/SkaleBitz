@@ -16,7 +16,7 @@ export const signup = async (req, res) => {
   const { error, value } = signupSchema.validate(req.body);
   if (error) throw createError(400, error.details[0].message);
 
-  const { email, password, name, accountType } = value;
+  const { email, password, name, accountType, termsAccepted } = value;
   const exists = await User.findOne({ email });
   if (exists) throw createError(409, "Email already registered");
 
@@ -29,6 +29,8 @@ export const signup = async (req, res) => {
     password: hashed,
     name,
     accountType,
+    termsAccepted,
+    termsAcceptedAt: termsAccepted ? new Date() : undefined,
     verified: false,
     verificationToken: token,
     verificationTokenExpires: tokenExpiry,
@@ -129,34 +131,42 @@ export const deleteAccount = async (req, res, next) => {
 export const requestPasswordReset = async (req, res) => {
   const { email } = req.body;
   if (!email) throw createError(400, "Email is required");
+
   const user = await User.findOne({ email });
   if (!user) {
     return res.json({ message: "If that account exists, we've emailed reset instructions." });
   }
+
   const token = makeVerifyToken();
   user.passwordResetToken = token;
   user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000);
   await user.save();
+
   const resetLinkBase = (FRONTEND_BASE_URL || "http://localhost:5173").replace(/\/$/, "");
   const resetLink = `${resetLinkBase}/reset/confirm?token=${token}`;
   await sendPasswordResetEmail(email, resetLink);
+
   res.json({ message: "If that account exists, we've emailed reset instructions." });
 };
+
 export const resetPassword = async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) throw createError(400, "Token and password are required");
   if (password.length < 8 || password.length > 128) {
     throw createError(400, "Password must be between 8 and 128 characters");
   }
+
   const user = await User.findOne({
     passwordResetToken: token,
     passwordResetExpires: { $gt: new Date() },
   });
   if (!user) throw createError(400, "Invalid or expired token");
+
   const hashed = await bcrypt.hash(password, 12);
   user.password = hashed;
   user.passwordResetToken = undefined;
   user.passwordResetExpires = undefined;
   await user.save();
+
   res.json({ message: "Password updated successfully" });
 };
