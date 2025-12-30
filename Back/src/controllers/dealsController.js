@@ -1,9 +1,22 @@
 import createError from "http-errors";
 import { getDealsConnection } from "../db/dealsConnection.js";
 import { createDealModel } from "../models/Deal.js";
+import { createInvestmentWithTransaction } from "../services/investmentService.js";
 import User from "../models/User.js";
 
 const getDealModel = () => createDealModel(getDealsConnection());
+const sanitizeUser = (user) => ({
+  id: user._id,
+  email: user.email,
+  pendingEmail: user.pendingEmail,
+  name: user.name,
+  about: user.about,
+  avatarUrl: user.avatarUrl,
+  balance: user.balance ?? 0,
+  accountType: user.accountType,
+  dealId: user.dealId,
+  verified: user.verified,
+});
 
 export const listDeals = async (_req, res) => {
   const Deal = getDealModel();
@@ -108,4 +121,21 @@ export const createDeal = async (req, res) => {
   }
 
   res.status(201).json({ deal });
+};
+
+export const investInDeal = async (req, res) => {
+  const dealId = req.params.id;
+  const amount = Number(req.body?.amount);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw createError(400, "Amount must be a positive number");
+  }
+
+  const { investment, investor } = await createInvestmentWithTransaction({
+    dealId,
+    investorId: req.user.id,
+    amount,
+  });
+
+  res.status(201).json({ investment, user: sanitizeUser(investor) });
 };
