@@ -427,6 +427,14 @@ export const createDeal = async (req, res) => {
     doc2,
     doc3DirectorId,
     doc3AddressProof,
+    revenue,
+    expenses,
+    burn_rate,
+    cash,
+    customers,
+    churn_rate,
+    acquisition_cost,
+    lifetime_value,
   } = req.body;
 
   let userRecord = null;
@@ -489,6 +497,14 @@ export const createDeal = async (req, res) => {
         addressProof: doc3AddressProof,
       },
     },
+        revenue,
+    expenses,
+    burn_rate,
+    cash,
+    customers,
+    churn_rate,
+    acquisition_cost,
+    lifetime_value,
     verified: true,
   });
 
