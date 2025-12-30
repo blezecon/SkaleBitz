@@ -42,6 +42,16 @@ const computeCycleNumber = ({ actualDate, baseDate, cadenceDays, fallbackIndex }
 
 const PERCENT_TO_DECIMAL = 0.01;
 
+const serializeInvestment = (inv) => ({
+  id: inv._id,
+  amount: inv.amount,
+  status: inv.status,
+  createdAt: inv.createdAt,
+  investor: inv.investorId
+    ? { id: inv.investorId._id, name: inv.investorId.name, email: inv.investorId.email }
+    : null,
+});
+
 const buildRepaymentSchedule = (repayments, { cadence, startDate }) => {
   if (!Array.isArray(repayments) || repayments.length === 0) return [];
 
@@ -293,21 +303,50 @@ export const listDealInvestments = async (req, res) => {
       .lean();
 
     res.json({
-      investments: investments.map((inv) => ({
-        id: inv._id,
-        amount: inv.amount,
-        status: inv.status,
-        createdAt: inv.createdAt,
-        investor: inv.investorId
-          ? { id: inv.investorId._id, name: inv.investorId.name, email: inv.investorId.email }
-          : null,
-      })),
+      investments: investments.map(serializeInvestment),
     });
   } catch (err) {
     if (process.env.NODE_ENV !== "production") {
       console.error("Failed to list deal investments", err);
     }
     throw createError(500, "Unable to load investments");
+  }
+};
+
+export const listDealInvestors = async (req, res) => {
+  const Deal = getDealModel();
+  const Investment = getInvestmentModel();
+
+  try {
+    const deal = await Deal.findOne({ _id: req.params.id, verified: true }).lean();
+    if (!deal) throw createError(404, "Deal not found");
+
+    const user = await User.findById(req.user?.id).select("_id accountType").lean();
+    if (!user || user.accountType !== "msme") {
+      throw createError(403, "You are not authorized to view investors for this deal");
+    }
+
+    if (!deal.msmeUserId || String(deal.msmeUserId) !== String(user._id)) {
+      throw createError(403, "You can only view investors for your own deals");
+    }
+
+    const investments = await Investment.find({ dealId: deal._id })
+      .sort({ createdAt: -1 })
+      .populate({ path: "investorId", select: "name email" })
+      .lean();
+
+    res.json({
+      deal: { id: deal._id, name: deal.name },
+      investments: investments.map(serializeInvestment),
+    });
+  } catch (err) {
+    if (err.status) {
+      throw err;
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to list deal investors", err);
+    }
+    throw createError(500, "Unable to load investors");
   }
 };
 
