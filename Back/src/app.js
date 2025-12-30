@@ -10,22 +10,36 @@ import userRoutes from "./routes/user.js";
 import dealRoutes from "./routes/deals.js";
 import statsRoutes from "./routes/stats.js";
 import errorHandler from "./middleware/errorHandler.js";
-import { FRONTEND_BASE_URL } from "./config/constants.js";
+import { FRONTEND_BASE_URL, isValidPort } from "./config/constants.js";
 
 const app = express();
 
 app.use(helmet());
 
-const allowedOrigins = [FRONTEND_BASE_URL].filter(Boolean);
+const allowedOrigins = new Set(
+  FRONTEND_BASE_URL ? [FRONTEND_BASE_URL] : []
+);
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) return callback(null, true);
 
-    if (/^http:\/\/localhost(?::\d+)?$/i.test(origin)) {
-      return callback(null, true);
+    try {
+      const parsedOrigin = new URL(origin);
+      if (parsedOrigin.hostname === "localhost") {
+        const portString = parsedOrigin.port;
+        const portValue = portString ? Number(portString) : null;
+        if (portValue !== null && Number.isNaN(portValue)) {
+          return callback(new Error("Not allowed by CORS"));
+        }
+        if (portValue === null || isValidPort(portValue)) {
+          return callback(null, true);
+        }
+      }
+    } catch {
+      return callback(new Error("Not allowed by CORS"));
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.has(origin)) {
       return callback(null, true);
     }
 
@@ -71,6 +85,7 @@ app.use("/api/stats", cacheAndDedupe, heavyLimiter, statsRoutes);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+// Platform health check plus legacy API endpoint for backward compatibility.
 app.get("/health", (_req, res) => res.json({ ok: true }));
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

@@ -12,11 +12,20 @@ const signToken = (user) =>
 
 const makeVerifyToken = () => crypto.randomBytes(32).toString("hex");
 
-const getFrontendBaseUrl = () => {
-  if (!FRONTEND_BASE_URL) {
+const getFrontendBaseUrl = ({ required = false, fallbackToAppBase = false } = {}) => {
+  if (FRONTEND_BASE_URL) {
+    return FRONTEND_BASE_URL;
+  }
+
+  if (fallbackToAppBase) {
+    return APP_BASE_URL;
+  }
+
+  if (required) {
     throw createError(500, "FRONTEND_BASE_URL is not configured");
   }
-  return FRONTEND_BASE_URL;
+
+  return null;
 };
 
 export const signup = async (req, res) => {
@@ -96,8 +105,9 @@ export const verifyEmail = async (req, res) => {
   user.verificationTokenExpires = undefined;
   await user.save();
 
-  if (FRONTEND_BASE_URL) {
-    return res.redirect(`${FRONTEND_BASE_URL}/login-registration.html?verified=1`);
+  const frontendBaseUrl = getFrontendBaseUrl();
+  if (frontendBaseUrl) {
+    return res.redirect(`${frontendBaseUrl}/login-registration.html?verified=1`);
   }
 
   return res.json({ message: "Email verified. You can now sign in." });
@@ -145,7 +155,7 @@ export const requestPasswordReset = async (req, res) => {
   user.passwordResetToken = token;
   user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000);
   await user.save();
-  const resetLinkBase = getFrontendBaseUrl();
+  const resetLinkBase = getFrontendBaseUrl({ required: true, fallbackToAppBase: true });
   const resetLink = `${resetLinkBase}/reset/confirm?token=${token}`;
   await sendPasswordResetEmail(email, resetLink);
   res.json({ message: "If that account exists, we've emailed reset instructions." });

@@ -1,10 +1,5 @@
 import axios from "axios";
 
-const normalizeBaseUrl = (value) => {
-  if (!value) return null;
-  return value.replace(/\/+$/, "");
-};
-
 const buildLocalFallback = () => {
   if (typeof window === "undefined") {
     return null;
@@ -15,12 +10,26 @@ const buildLocalFallback = () => {
   return `${protocol}//${hostname}:${fallbackPort}`;
 };
 
-const resolvedBaseURL =
-  normalizeBaseUrl(import.meta.env.VITE_API_URL) ||
-  normalizeBaseUrl(buildLocalFallback());
+const resolveBaseUrl = () => {
+  const envBase = import.meta.env.VITE_API_URL;
+  if (envBase) {
+    return envBase.replace(/\/+$/, "");
+  }
+
+  const fallback = buildLocalFallback();
+  return fallback ? fallback.replace(/\/+$/, "") : null;
+};
+
+const resolvedBaseURL = resolveBaseUrl();
+
+if (!resolvedBaseURL) {
+  throw new Error(
+    "API base URL missing: set VITE_API_URL (e.g., http://localhost:4000) or set VITE_API_FALLBACK_PORT to build a http://localhost:<port> fallback."
+  );
+}
 
 const api = axios.create({
-  baseURL: resolvedBaseURL || "",
+  baseURL: resolvedBaseURL,
   headers: {
     "Content-Type": "application/json",
   },
