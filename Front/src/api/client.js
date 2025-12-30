@@ -7,8 +7,10 @@ const buildLocalFallback = () => {
 
   const { protocol, hostname, port } = window.location;
   if (hostname === "localhost" || hostname === "127.0.0.1") {
-    const fallbackPort = import.meta.env.VITE_API_FALLBACK_PORT || port || "4000";
-    return `${protocol}//${hostname}:${fallbackPort}`;
+    const fallbackPort =
+      import.meta.env.VITE_API_FALLBACK_PORT || port || "4000";
+    const resolvedPort = fallbackPort || "4000";
+    return `${protocol}//${hostname}:${resolvedPort}`;
   }
 
   return `${protocol}//${hostname}${port ? `:${port}` : ""}`;

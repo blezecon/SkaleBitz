@@ -59,11 +59,7 @@ const corsOptions = {
       return callback(new Error("Not allowed by CORS"));
     }
 
-    if (
-      allowedOrigins.has(origin) ||
-      allowedOrigins.has(parsedOrigin.origin) ||
-      allowedHostnames.has(parsedOrigin.hostname)
-    ) {
+    if (allowedOrigins.has(origin) || allowedHostnames.has(parsedOrigin.hostname)) {
       return callback(null, true);
     }
 
