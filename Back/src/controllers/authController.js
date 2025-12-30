@@ -95,7 +95,7 @@ export const verifyEmail = async (req, res) => {
   user.verificationTokenExpires = undefined;
   await user.save();
 
-  // Redirect only if you actually serve the page at that path.
+  // Redirect to the SPA login route when a frontend base is configured.
   if (FRONTEND_BASE_URL) {
     return res.redirect(buildFrontendUrl("/login?verified=1"));
   }
