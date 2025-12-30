@@ -32,95 +32,20 @@ const buildUtilizationMap = async (dealIds, Investment) => {
 export const getOverviewStats = async (_req, res) => {
   const Deal = getDealModel();
   const Investment = getInvestmentModel();
-  const facilityField = { $ifNull: ["$facilitySize", 10000] };
-  const yieldField = { $ifNull: ["$targetYield", "$yieldPct"] };
 
-  const [summary] = await Deal.aggregate([
-    {
-      $match: { verified: true },
-    },
-    {
-      $group: {
-        _id: null,
-        activeCapital: {
-          $sum: {
-            $cond: [
-              { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "active"] },
-              facilityField,
-              0,
-            ],
-          },
-        },
-        activeDeals: {
-          $sum: {
-            $cond: [
-              { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "active"] },
-              1,
-              0,
-            ],
-          },
-        },
-        avgYield: {
-          $avg: {
-            $cond: [
-              { $eq: [{ $toLower: { $ifNull: ["$status", ""] } }, "active"] },
-              yieldField,
-              null,
-            ],
-          },
-        },
-        liveVolume: {
-          $sum: { $ifNull: ["$liveVolume", facilityField] },
-        },
-        cardVolume: { $sum: { $ifNull: ["$cardVolume", 0] } },
-        bankVolume: { $sum: { $ifNull: ["$bankVolume", 0] } },
-        payoutVolume: { $sum: { $ifNull: ["$payoutVolume", 0] } },
-      },
-    },
-  ]);
-
-  const stats = {
-    activeCapital: summary?.activeCapital || 0,
-    activeDeals: summary?.activeDeals || 0,
-    averageYield: summary?.avgYield ? Number.parseFloat(summary.avgYield.toFixed(2)) : 0,
-    liveVolume: summary?.liveVolume || 0,
-    breakdown: {
-      cardVolume: summary?.cardVolume || 0,
-      bankVolume: summary?.bankVolume || 0,
-      payoutVolume: summary?.payoutVolume || 0,
-    },
-  };
-
-  if (stats.liveVolume === 0) {
-    stats.liveVolume =
-    stats.breakdown.cardVolume + stats.breakdown.bankVolume + stats.breakdown.payoutVolume;
-  }
-
-  let featuredDeals = await Deal.find({
-    status: { $regex: /^active$/i },
-    verified: true,
-  })
+  const deals = await Deal.find({ verified: true })
     .sort({ yieldPct: -1, facilitySize: -1, amount: -1, createdAt: -1 })
-    .limit(3)
-    .select("name sector amount facilitySize yieldPct targetYield status location tenorMonths risk liveVolume")
-    .lean();
-
-  if (featuredDeals.length === 0) {
-    featuredDeals = await Deal.find({ verified: true })
-      .sort({ createdAt: -1 })
-      .limit(3)
-      .select("name sector amount facilitySize yieldPct targetYield status location tenorMonths risk liveVolume")
-      .lean();
-  }
 
     const utilizationMap = await buildUtilizationMap(
-    featuredDeals.map((deal) => deal._id),
+    deals.map((deal) => deal._id),
     Investment
   );
 
-  featuredDeals = featuredDeals.map((deal) => {
+  const normalizedDeals = deals.map((deal) => {
     const facilitySize = resolveFacilitySize(deal);
-    const utilizedAmount = utilizationMap.get(String(deal._id)) || 0;
+    const utilizationTotal = utilizationMap.get(String(deal._id));
+    const utilizedAmount =
+      utilizationTotal != null ? utilizationTotal : Number(deal.utilizedAmount ?? 0);
     const normalizedYield = resolveTargetYield(deal);
     return ensureTenorMonths({
       ...deal,
@@ -132,7 +57,44 @@ export const getOverviewStats = async (_req, res) => {
     });
   });
 
-  res.json({ ...stats, featuredDeals });
+   const activeDeals = normalizedDeals.filter(
+    (deal) => (deal.status || "").toLowerCase() === ACTIVE_STATUS.toLowerCase()
+  );
+  const yieldValues = activeDeals
+    .map((deal) => resolveTargetYield(deal))
+    .filter((value) => Number.isFinite(value));
+  const averageYield =
+    yieldValues.length > 0
+      ? Number.parseFloat((yieldValues.reduce((a, b) => a + b, 0) / yieldValues.length).toFixed(2))
+      : 0;
+
+  const cardVolume = normalizedDeals.reduce((sum, deal) => sum + Number(deal.cardVolume || 0), 0);
+  const bankVolume = normalizedDeals.reduce((sum, deal) => sum + Number(deal.bankVolume || 0), 0);
+  const payoutVolume = normalizedDeals.reduce(
+    (sum, deal) => sum + Number(deal.payoutVolume || 0),
+    0
+  );
+  const liveVolume = normalizedDeals.reduce(
+    (sum, deal) => sum + Number(deal.utilizedAmount || 0),
+    0
+  );
+
+  let featuredDeals = activeDeals.length ? activeDeals : normalizedDeals;
+  featuredDeals = [...featuredDeals]
+    .sort((a, b) => {
+      if (b.yieldPct !== a.yieldPct) return b.yieldPct - a.yieldPct;
+      if (b.facilitySize !== a.facilitySize) return b.facilitySize - a.facilitySize;
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    })
+    .slice(0, 3);
+
+  res.json({
+    activeDeals: activeDeals.length,
+    averageYield,
+    liveVolume,
+    breakdown: { cardVolume, bankVolume, payoutVolume },
+    featuredDeals,
+  });
 };
 
 export const getMsmeUtilization = async (req, res, next) => {
