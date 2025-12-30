@@ -8,7 +8,7 @@ export const SMTP_USER = process.env.SMTP_USER || "";
 export const SMTP_PASS = process.env.SMTP_PASS || "";
 export const MAIL_FROM = process.env.MAIL_FROM || "";
 
-const trimTrailingSlash = (value = "") => value.replace(/\/+$/, "");
+export const trimTrailingSlash = (value = "") => value.replace(/\/+$/, "");
 
 // Base URLs are provided entirely by environment variables
 export const APP_BASE_URL = trimTrailingSlash(process.env.APP_BASE_URL || "");
@@ -24,18 +24,8 @@ if (!FRONTEND_BASE_URL) {
   throw new Error("FRONTEND_BASE_URL is required");
 }
 
-const requireBaseUrl = (value, name) => {
-  if (!value) {
-    throw new Error(`${name} is required`);
-  }
-  return value;
-};
-
 export const buildBackendUrl = (pathname) =>
-  new URL(pathname, requireBaseUrl(APP_BASE_URL, "APP_BASE_URL")).toString();
+  new URL(pathname, APP_BASE_URL).toString();
 
 export const buildFrontendUrl = (pathname) =>
-  new URL(
-    pathname,
-    requireBaseUrl(FRONTEND_BASE_URL, "FRONTEND_BASE_URL")
-  ).toString();
+  new URL(pathname, FRONTEND_BASE_URL).toString();

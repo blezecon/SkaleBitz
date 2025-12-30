@@ -10,7 +10,7 @@ import userRoutes from "./routes/user.js";
 import dealRoutes from "./routes/deals.js";
 import statsRoutes from "./routes/stats.js";
 import errorHandler from "./middleware/errorHandler.js";
-import { FRONTEND_BASE_URL } from "./config/constants.js";
+import { FRONTEND_BASE_URL, trimTrailingSlash } from "./config/constants.js";
 
 const app = express();
 
@@ -31,7 +31,7 @@ const localhostRegex = /^http:\/\/localhost(?::\d+)?$/i;
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    const normalizedOrigin = origin.replace(/\/+$/, "");
+    const normalizedOrigin = trimTrailingSlash(origin);
     if (localhostRegex.test(normalizedOrigin)) {
       return callback(null, true);
     }
