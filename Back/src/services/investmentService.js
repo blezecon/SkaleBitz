@@ -2,17 +2,20 @@ import createError from "http-errors";
 import { getDealsConnection } from "../db/dealsConnection.js";
 import { createInvestmentModel } from "../models/Investment.js";
 import { createDealModel } from "../models/Deal.js";
-import { createTransactionModel, TRANSACTION_TYPES } from "../models/Transaction.js";
+import {
+  createTransactionModel,
+  TRANSACTION_TYPES,
+} from "../models/Transaction.js";
 import User from "../models/User.js";
 
 const getInvestmentModel = () => createInvestmentModel(getDealsConnection());
 const getTransactionModel = () => createTransactionModel(getDealsConnection());
 const getDealModel = () => createDealModel(getDealsConnection());
-const NON_REPLICA_SET_CODE = 20; 
-const NON_REPLICA_TRANSACTION_MESSAGE = "Transaction numbers are only allowed on a replica set member";
+const NON_REPLICA_SET_CODE = 20;
+const NON_REPLICA_TRANSACTION_MESSAGE =
+  "Transaction numbers are only allowed on a replica set member";
 const REPAYMENT_TYPES = TRANSACTION_TYPES.filter((type) => type !== "invest");
 const logRollbackFailure = (message, error) => {
-  
   console.error(message, error);
 };
 
@@ -61,13 +64,19 @@ const createInvestmentWithoutSession = async (
     try {
       await Investment.deleteOne({ _id: investmentRecord._id });
     } catch (rollbackErr) {
-      logRollbackFailure("Failed to rollback investment after transaction error", rollbackErr);
+      logRollbackFailure(
+        "Failed to rollback investment after transaction error",
+        rollbackErr
+      );
     }
     try {
       investor.balance += amount;
       await investor.save();
     } catch (rollbackErr) {
-      logRollbackFailure("Failed to rollback investor balance after transaction error", rollbackErr);
+      logRollbackFailure(
+        "Failed to rollback investor balance after transaction error",
+        rollbackErr
+      );
     }
     throw err;
   }
@@ -107,7 +116,7 @@ export const createInvestmentWithTransaction = async ({
   if (typeof amount !== "number" || Number.isNaN(amount) || amount <= 0) {
     throw createError(400, "amount must be a positive number");
   }
-  
+
   const Investment = getInvestmentModel();
   const Transaction = getTransactionModel();
   const Deal = getDealModel();
@@ -117,7 +126,7 @@ export const createInvestmentWithTransaction = async ({
   let updatedInvestor;
   try {
     await session.withTransaction(async () => {
-            const investor = await User.findById(investorId).session(session);
+      const investor = await User.findById(investorId).session(session);
       if (!investor) {
         throw createError(404, "Investor not found");
       }
@@ -128,7 +137,9 @@ export const createInvestmentWithTransaction = async ({
         throw createError(400, "Insufficient balance");
       }
 
-      const deal = await Deal.findOne({ _id: dealId, verified: true }).session(session);
+      const deal = await Deal.findOne({ _id: dealId, verified: true }).session(
+        session
+      );
       if (!deal) {
         throw createError(404, "Deal not found");
       }
@@ -206,7 +217,9 @@ export const recordRepaymentTransaction = async ({
 
   try {
     await session.withTransaction(async () => {
-      const investment = await Investment.findById(investmentId).session(session);
+      const investment = await Investment.findById(investmentId).session(
+        session
+      );
       if (!investment) {
         throw createError(404, "Investment not found");
       }
