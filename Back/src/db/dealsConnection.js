@@ -3,18 +3,17 @@ import { createDealModel } from "../models/Deal.js";
 
 let dealsConnection;
 
-export const initDealsConnection = async (uri) => {
-  if (!uri) {
-    console.warn("MONGO_DEALS_URI not provided. Using primary database connection for deals.");
-    dealsConnection = mongoose.connection;
-    return dealsConnection;
-  }
-
+  export const initDealsConnection = async () => {
   if (dealsConnection) return dealsConnection;
 
-  dealsConnection = mongoose.createConnection(uri);
+  if (!mongoose.connection.readyState) {
+    throw new Error("Primary database connection must be established before initializing deals.");
+  }
+
+  dealsConnection = mongoose.connection;
+
   await seedDeals(dealsConnection);
-  console.log("Deals MongoDB connected");
+  console.log("Deals initialized on primary MongoDB connection");
   return dealsConnection;
 };
 

@@ -5,7 +5,6 @@ import { initDealsConnection } from "./src/db/dealsConnection.js";
 
 const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URI;
-const MONGO_DEALS_URI = process.env.MONGO_DEALS_URI || process.env.DEALS_MONGO_URI;
 
 const start = async () => {
   try {
@@ -14,12 +13,9 @@ const start = async () => {
     }
 
     await mongoose.connect(MONGO_URI);
-    console.log("Primary MongoDB connected");
-
-    if (!MONGO_DEALS_URI) {
-      console.warn("MONGO_DEALS_URI not set. Using primary cluster for deals data.");
-    }
-    await initDealsConnection(MONGO_DEALS_URI || MONGO_URI);
+    
+    console.log("MongoDB connected");
+    await initDealsConnection();
 
     app.listen(PORT, () => console.log(`Server running on ${PORT}`));
     } catch (err) {
