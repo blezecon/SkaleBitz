@@ -16,7 +16,7 @@ export const signup = async (req, res) => {
   const { error, value } = signupSchema.validate(req.body);
   if (error) throw createError(400, error.details[0].message);
 
-  const { email, password, name } = value;
+  const { email, password, name, accountType } = value;
   const exists = await User.findOne({ email });
   if (exists) throw createError(409, "Email already registered");
 
@@ -28,6 +28,7 @@ export const signup = async (req, res) => {
     email,
     password: hashed,
     name,
+    accountType,
     verified: false,
     verificationToken: token,
     verificationTokenExpires: tokenExpiry,
@@ -56,7 +57,7 @@ export const signin = async (req, res) => {
 
   const token = signToken(user);
   res.json({
-    user: { id: user._id, email: user.email, name: user.name },
+    user: { id: user._id, email: user.email, name: user.name, accountType: user.accountType },
     token,
   });
 };
