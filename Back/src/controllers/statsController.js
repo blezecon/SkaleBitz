@@ -8,6 +8,7 @@ import { ensureTenorMonths } from "../utils/tenor.js";
 const getDealModel = () => createDealModel(getDealsConnection());
 const getInvestmentModel = () => createInvestmentModel(getDealsConnection());
 const getTransactionModel = () => createTransactionModel(getDealsConnection());
+const ACTIVE_STATUS = "Active";
 
 export const getOverviewStats = async (_req, res) => {
   const Deal = getDealModel();
@@ -91,6 +92,43 @@ export const getOverviewStats = async (_req, res) => {
   featuredDeals = featuredDeals.map((deal) => ensureTenorMonths(deal));
 
   res.json({ ...stats, featuredDeals });
+};
+
+export const getMsmeUtilization = async (req, res, next) => {
+  try {
+    const msmeId = req.user?.id;
+    const msmeObjectId =
+      msmeId && mongoose.Types.ObjectId.isValid(msmeId) ? new mongoose.Types.ObjectId(msmeId) : null;
+
+    if (!msmeObjectId) {
+      return res.json({ utilized: 0, deals: 0 });
+    }
+
+    const Deal = getDealModel();
+    const Investment = getInvestmentModel();
+
+    const deals = await Deal.find({
+      msmeUserId: msmeObjectId,
+      status: ACTIVE_STATUS,
+      verified: true,
+    })
+      .select("_id")
+      .lean();
+
+    if (!deals.length) {
+      return res.json({ utilized: 0, deals: 0 });
+    }
+
+    const dealIds = deals.map((deal) => deal._id);
+    const [summary] = await Investment.aggregate([
+      { $match: { dealId: { $in: dealIds } } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]);
+
+    res.json({ utilized: summary?.total || 0, deals: dealIds.length });
+  } catch (err) {
+    next(err);
+  }
 };
 
 export const getInvestorDashboard = async (req, res, next) => {
