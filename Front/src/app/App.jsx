@@ -17,6 +17,7 @@ import Terms from '../pages/Terms';
 import Privacy from '../pages/Privacy';
 import Support from '../pages/Support';
 import ResetPassword from '../pages/ResetPassword';
+import ResetPasswordConfirm from '../pages/ResetPasswordConfirm';
 import Footer from '../components/layout/Footer';
 import Navbar from '../components/layout/Navbar';
 import MsmeDashboard from '../pages/MsmeDashboard';
@@ -26,32 +27,34 @@ import RequireAuth from '../components/RequireAuth';
 function App() {
   return (
     <>
-      <Navbar />
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-        <Route path="/dashboard" element={<RequireAuth><InvestorDashboard /></RequireAuth>} />
-        <Route path="/deals" element={<RequireAuth><Deals /></RequireAuth>} />
-        <Route path="/deals/:dealId" element={<RequireAuth><InvestorDealDetail /></RequireAuth>} />
-        <Route path="/deals/:dealId/cashflows" element={<RequireAuth><CashflowHistory /></RequireAuth>} />
-        <Route path="/logs" element={<RequireAuth><Logs /></RequireAuth>} />
-        <Route path="/risk-reports" element={<RequireAuth><RiskReports /></RequireAuth>} />
-        <Route path="/ops" element={<RequireAuth><OpsQueue /></RequireAuth>} />
-        <Route path="/ops/tasks/:taskId" element={<RequireAuth><OpsTaskDetail /></RequireAuth>} />
-        <Route path="/msme/dashboard" element={<RequireAuth><MsmeDashboard /></RequireAuth>} />
-        <Route path="/msme/wizard" element={<RequireAuth><MSMEWizard /></RequireAuth>} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/support" element={<Support />} />
-        <Route path="/reset" element={<ResetPassword />} />
-        <Route path="/home" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      <Footer />
+    <Navbar />
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+      <Route path="/dashboard" element={<RequireAuth><InvestorDashboard /></RequireAuth>} />
+      <Route path="/deals" element={<RequireAuth><Deals /></RequireAuth>} />
+      <Route path="/deals/:dealId" element={<RequireAuth><InvestorDealDetail /></RequireAuth>} />
+      <Route path="/deals/:dealId/cashflows" element={<RequireAuth><CashflowHistory /></RequireAuth>} />
+      <Route path="/logs" element={<RequireAuth><Logs /></RequireAuth>} />
+      <Route path="/risk-reports" element={<RequireAuth><RiskReports /></RequireAuth>} />
+      <Route path="/ops" element={<RequireAuth><OpsQueue /></RequireAuth>} />
+      <Route path="/ops/tasks/:taskId" element={<RequireAuth><OpsTaskDetail /></RequireAuth>} />
+      <Route path="/msme/dashboard" element={<RequireAuth><MsmeDashboard /></RequireAuth>} />
+      <Route path="/msme/wizard" element={<RequireAuth><MSMEWizard /></RequireAuth>} />
+      <Route path="/contact" element={<Contact />} />
+      <Route path="/terms" element={<Terms />} />
+       <Route path="/privacy" element={<Privacy />} />
+       <Route path="/support" element={<Support />} />
+       <Route path="/reset" element={<ResetPassword />} />
+       <Route path="/reset/confirm" element={<ResetPasswordConfirm />} />
+       <Route path="/home" element={<Navigate to="/" replace />} />
+       <Route path="*" element={<NotFound />} />
+     </Routes>
+    <Footer />
     </>
   );
 }
+
 export default App;
