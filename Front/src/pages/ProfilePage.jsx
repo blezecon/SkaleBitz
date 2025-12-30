@@ -1,14 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Mail, User, LogOut, Trash2, UploadCloud, Sparkles, BadgeCheck } from 'lucide-react';
+import useAuth from '../hooks/useAuth';
 
-export default function ProfilePage({ user = { name: 'Jordan Lee', email: 'jordan@example.com', role: 'msme', avatarUrl: '' }, onSave = () => {}, onLogout = () => {}, onDelete = () => {} }) {
-  const [name, setName] = useState(user.name || '');
-  const [email, setEmail] = useState(user.email || '');
-  const [about, setAbout] = useState(user.about || '');
-  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl || '');
+export default function ProfilePage({ onSave = () => {} }) {
+  const navigate = useNavigate();
+  const { user, logout, deleteAccount } = useAuth();
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [about, setAbout] = useState(user?.about || '');
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
+  const [actionError, setActionError] = useState('');
 
-  const roleLabel = user.role === 'investor' ? 'Investor' : 'MSME';
-  const roleColor = user.role === 'investor' ? 'bg-[#E6F0FF] text-[#1F6FEB]' : 'bg-[#FEF3C7] text-[#B45309]';
+  useEffect(() => {
+    setName(user?.name || '');
+    setEmail(user?.email || '');
+    setAbout(user?.about || '');
+    setAvatarUrl(user?.avatarUrl || '');
+  }, [user]);
+
+  const role = user?.accountType || user?.role || 'investor';
+  const roleLabel = role === 'investor' ? 'Investor' : 'MSME';
+  const roleColor = role === 'investor' ? 'bg-[#E6F0FF] text-[#1F6FEB]' : 'bg-[#FEF3C7] text-[#B45309]';
 
   const handleAvatarChange = (e) => {
     const file = e.target.files?.[0];
@@ -16,6 +29,27 @@ export default function ProfilePage({ user = { name: 'Jordan Lee', email: 'jorda
       const url = URL.createObjectURL(file);
       setAvatarUrl(url);
       // TODO: upload to backend
+    }
+  };
+
+    const handleLogout = () => {
+    const confirmed = window.confirm('Are you sure you want to log out?');
+    if (confirmed) {
+      logout();
+      navigate('/');
+    }
+  };
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm('This will permanently delete your account. Continue?');
+    if (!confirmed) return;
+    try {
+      setActionError('');
+      await deleteAccount();
+      navigate('/');
+    } catch (err) {
+      const apiError = err.response?.data?.error;
+      setActionError(apiError || 'Unable to delete your account right now.');
     }
   };
 
@@ -34,14 +68,14 @@ export default function ProfilePage({ user = { name: 'Jordan Lee', email: 'jorda
           </div>
           <div className="flex gap-3">
             <button
-              onClick={onLogout}
+              onClick={handleLogout}
               className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]"
             >
               <LogOut size={16} />
               Logout
             </button>
             <button
-              onClick={onDelete}
+              onClick={handleDelete}
               className="inline-flex items-center gap-2 rounded-full border border-[#FECACA] bg-[#FEE2E2] px-4 py-2 text-sm font-semibold text-[#B91C1C] transition hover:border-[#FCA5A5]"
             >
               <Trash2 size={16} />
@@ -49,6 +83,12 @@ export default function ProfilePage({ user = { name: 'Jordan Lee', email: 'jorda
             </button>
           </div>
         </header>
+
+          {actionError && (
+          <div className="rounded-2xl border border-[#FECACA] bg-[#FEF2F2] p-3 text-sm text-[#B91C1C]">
+            {actionError}
+          </div>
+          )}
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Avatar + role */}
@@ -124,10 +164,10 @@ export default function ProfilePage({ user = { name: 'Jordan Lee', email: 'jorda
               </button>
               <button
                 onClick={() => {
-                  setName(user.name || '');
-                  setEmail(user.email || '');
-                  setAbout(user.about || '');
-                  setAvatarUrl(user.avatarUrl || '');
+                  setName(user?.name || '');
+                  setEmail(user?.email || '');
+                  setAbout(user?.about || '');
+                  setAvatarUrl(user?.avatarUrl || '');
                 }}
                 className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]"
               >

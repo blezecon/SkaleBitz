@@ -21,6 +21,7 @@ import Footer from '../components/layout/Footer';
 import Navbar from '../components/layout/Navbar';
 import MsmeDashboard from '../pages/MsmeDashboard';
 import ProfilePage from '../pages/ProfilePage';
+import RequireAuth from '../components/RequireAuth';
 
 function App() {
   return (
@@ -30,17 +31,17 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/dashboard" element={<InvestorDashboard />} />
-        <Route path="/deals" element={<Deals />} />
-        <Route path="/deals/:dealId" element={<InvestorDealDetail />} />
-        <Route path="/deals/:dealId/cashflows" element={<CashflowHistory />} />
-        <Route path="/logs" element={<Logs />} />
-        <Route path="/risk-reports" element={<RiskReports />} />
-        <Route path="/ops" element={<OpsQueue />} />
-        <Route path="/ops/tasks/:taskId" element={<OpsTaskDetail />} />
-        <Route path="/msme/dashboard" element={<MsmeDashboard />} />
-        <Route path="/msme/wizard" element={<MSMEWizard />} />
+        <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+        <Route path="/dashboard" element={<RequireAuth><InvestorDashboard /></RequireAuth>} />
+        <Route path="/deals" element={<RequireAuth><Deals /></RequireAuth>} />
+        <Route path="/deals/:dealId" element={<RequireAuth><InvestorDealDetail /></RequireAuth>} />
+        <Route path="/deals/:dealId/cashflows" element={<RequireAuth><CashflowHistory /></RequireAuth>} />
+        <Route path="/logs" element={<RequireAuth><Logs /></RequireAuth>} />
+        <Route path="/risk-reports" element={<RequireAuth><RiskReports /></RequireAuth>} />
+        <Route path="/ops" element={<RequireAuth><OpsQueue /></RequireAuth>} />
+        <Route path="/ops/tasks/:taskId" element={<RequireAuth><OpsTaskDetail /></RequireAuth>} />
+        <Route path="/msme/dashboard" element={<RequireAuth><MsmeDashboard /></RequireAuth>} />
+        <Route path="/msme/wizard" element={<RequireAuth><MSMEWizard /></RequireAuth>} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />

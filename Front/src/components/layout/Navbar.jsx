@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Sparkles, Search } from 'lucide-react';
+import { Sparkles, Search, UserRound } from 'lucide-react';
 import { useState } from 'react';
+import useAuth from '../../hooks/useAuth';
 
 export default function Navbar() {
   const [query, setQuery] = useState('');
+  const { isAuthenticated, user } = useAuth();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -41,18 +43,33 @@ export default function Navbar() {
         </form>
 
         <div className="flex items-center gap-3">
-          <Link
-            className="hidden rounded-full px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:text-[#1F6FEB] md:inline-block"
-            to="/login"
-          >
-            Log in
-          </Link>
-          <Link
-            className="rounded-full bg-[#1F6FEB] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#1F6FEB33] transition hover:bg-[#195cc7]"
-            to="/register"
-          >
-            Join now
-          </Link>
+          {isAuthenticated ? (
+            <Link
+              className="flex items-center gap-3 rounded-full border border-[#E5E7EB] bg-white px-3 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#CBD5E1]"
+              to="/profile"
+              aria-label="Profile"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E6F0FF] text-[#1F6FEB]">
+                {user?.name ? user.name.charAt(0).toUpperCase() : <UserRound size={18} />}
+              </span>
+              <span className="hidden md:inline">{user?.name || 'Profile'}</span>
+            </Link>
+          ) : (
+            <>
+              <Link
+                className="hidden rounded-full px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:text-[#1F6FEB] md:inline-block"
+                to="/login"
+              >
+                Log in
+              </Link>
+              <Link
+                className="rounded-full bg-[#1F6FEB] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#1F6FEB33] transition hover:bg-[#195cc7]"
+                to="/register"
+              >
+                Join now
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>

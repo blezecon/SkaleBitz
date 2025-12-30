@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { ArrowRight, Eye, EyeOff, Lock, Mail, Sparkles } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signin } from '../services/authService';
-import { clearAuthToken, setAuthToken } from '../services/api';
+import useAuth from '../hooks/useAuth';
 
-const MSME_ROUTE = '/onboarding/msme';
+const MSME_ROUTE = '/msme/dashboard';
 const DASHBOARD_ROUTE = '/dashboard';
 
 export default function Login() {
   const navigate = useNavigate();
+    const { login, logout } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,14 +23,14 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    clearAuthToken();
+    logout();
     try {
       setLoading(true);
       const data = await signin({
         email: form.email.trim(),
         password: form.password,
       });
-      setAuthToken(data.token);
+      login(data.token, data.user);
       const destination = data.user?.accountType === 'msme' ? MSME_ROUTE : DASHBOARD_ROUTE;
       navigate(destination, { replace: true });
     } catch (err) {
