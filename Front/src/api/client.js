@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const trimTrailingSlash = (value = "") => value.replace(/\/+$/, "");
+
 const resolveBaseURL = () => {
-  const envUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, "");
+  const envUrl = trimTrailingSlash(import.meta.env.VITE_API_URL || "");
   if (envUrl) {
     return envUrl;
   }

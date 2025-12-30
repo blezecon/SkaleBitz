@@ -17,6 +17,13 @@ export const FRONTEND_BASE_URL = trimTrailingSlash(
 );
 export const PORT = process.env.PORT;
 
+if (!APP_BASE_URL) {
+  throw new Error("APP_BASE_URL is required");
+}
+if (!FRONTEND_BASE_URL) {
+  throw new Error("FRONTEND_BASE_URL is required");
+}
+
 const requireBaseUrl = (value, name) => {
   if (!value) {
     throw new Error(`${name} is required`);
