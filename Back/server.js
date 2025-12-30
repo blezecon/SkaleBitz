@@ -1,9 +1,9 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 import app from "./src/app.js";
+import { PORT } from "./src/config/constants.js";
 import { initDealsConnection } from "./src/db/dealsConnection.js";
 
-const PORT = process.env.PORT || 4000;
 const MONGO_URI = process.env.MONGO_URI;
 
 const start = async () => {
