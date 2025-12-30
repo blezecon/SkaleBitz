@@ -31,3 +31,10 @@ export const updateDealContact = async (id, payload) => {
   const { data } = await api.put(`/api/deals/${id}/contact`, payload);
   return data.deal;
 };
+
+export const fetchActiveDealsCount = async () => {
+  return withRequestLock("deals:active-count", async () => {
+    const { data } = await api.get("/api/deals/active/count");
+    return Number.isFinite(data?.count) ? data.count : 0;
+  });
+};

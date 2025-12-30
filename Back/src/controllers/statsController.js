@@ -4,11 +4,14 @@ import { createDealModel } from "../models/Deal.js";
 import { createInvestmentModel } from "../models/Investment.js";
 import { createTransactionModel } from "../models/Transaction.js";
 import { ensureTenorMonths } from "../utils/tenor.js";
+import {
+  buildActiveStatusFilter,
+  isActiveStatus,
+} from "../utils/dealStatus.js";
 
 const getDealModel = () => createDealModel(getDealsConnection());
 const getInvestmentModel = () => createInvestmentModel(getDealsConnection());
 const getTransactionModel = () => createTransactionModel(getDealsConnection());
-const ACTIVE_STATUS = "Active";
 
 const resolveFacilitySize = (deal) => {
   const raw = Number(deal?.facilitySize ?? 10000);
@@ -57,8 +60,8 @@ export const getOverviewStats = async (_req, res) => {
     });
   });
 
-   const activeDeals = normalizedDeals.filter(
-    (deal) => (deal.status || "").toLowerCase() === ACTIVE_STATUS.toLowerCase()
+  const activeDeals = normalizedDeals.filter((deal) =>
+    isActiveStatus(deal.status)
   );
   const yieldValues = activeDeals
     .map((deal) => resolveTargetYield(deal))
@@ -112,8 +115,8 @@ export const getMsmeUtilization = async (req, res, next) => {
 
     const deals = await Deal.find({
       msmeUserId: msmeObjectId,
-      status: ACTIVE_STATUS,
       verified: true,
+      ...buildActiveStatusFilter(),
     })
       .select("_id")
       .lean();

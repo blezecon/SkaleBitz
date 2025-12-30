@@ -9,10 +9,12 @@ import {
   listDealInvestors,
   listDeals,
   updateDealContact,
+  getActiveDealsCount,
 } from "../controllers/dealsController.js";
 
 const router = Router();
 
+router.get("/active/count", getActiveDealsCount);
 router.get("/", authRequired, listDeals);
 
 router.get("/:id/cashflows", authRequired, getDealCashflows);

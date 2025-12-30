@@ -48,4 +48,14 @@ export const APP_BASE_URL = normalizeBaseUrl(
 );
 
 // Optional: frontend redirect after verify (if you want to redirect)
-export const FRONTEND_BASE_URL = normalizeBaseUrl(process.env.FRONTEND_BASE_URL);
+const FRONTEND_BASE_URL_INPUT = process.env.FRONTEND_BASE_URL;
+export const FRONTEND_BASE_URL = normalizeBaseUrl(FRONTEND_BASE_URL_INPUT);
+
+const FRONTEND_BASE_URLS = (process.env.FRONTEND_BASE_URLS || "")
+  .split(",")
+  .map((value) => normalizeBaseUrl(value.trim()))
+  .filter(Boolean);
+
+export const ALLOWED_FRONTEND_ORIGINS = Array.from(
+  new Set([FRONTEND_BASE_URL, ...FRONTEND_BASE_URLS].filter(Boolean))
+);

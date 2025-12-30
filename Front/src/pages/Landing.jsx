@@ -9,6 +9,7 @@ import {
   Globe2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { fetchActiveDealsCount } from "../services/dealService";
 import { fetchOverviewStats } from "../services/statsService";
 import { formatCurrency, formatPercent } from "../utils/formatters";
 import { resolveRiskLabel, resolveTenorMonths } from "../utils/dealMeta";
@@ -71,6 +72,18 @@ export default function Landing() {
       }
     };
     load();
+    const loadActiveCount = async () => {
+      try {
+        const count = await fetchActiveDealsCount();
+        setStats((prev) => ({
+          ...prev,
+          activeDeals: Number.isFinite(count) ? count : prev.activeDeals,
+        }));
+      } catch {
+        // Keep existing stats when count cannot be loaded.
+      }
+    };
+    loadActiveCount();
   }, []);
 
   const baseBreakdown = stats.breakdown || defaultStats.breakdown;
@@ -102,7 +115,6 @@ export default function Landing() {
           : base.averageYield;
       return {
         ...base,
-        activeDeals: base.activeDeals || source.length,
         averageYield: base.averageYield || avgYield,
         liveVolume: base.liveVolume || totalUtilized,
       };

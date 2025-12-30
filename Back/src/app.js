@@ -10,15 +10,35 @@ import userRoutes from "./routes/user.js";
 import dealRoutes from "./routes/deals.js";
 import statsRoutes from "./routes/stats.js";
 import errorHandler from "./middleware/errorHandler.js";
-import { FRONTEND_BASE_URL, isValidPort } from "./config/constants.js";
+import {
+  ALLOWED_FRONTEND_ORIGINS,
+  APP_BASE_URL,
+  FRONTEND_BASE_URL,
+  isValidPort,
+} from "./config/constants.js";
 
 const app = express();
 
 app.use(helmet());
 
-const allowedOrigins = new Set(
-  FRONTEND_BASE_URL ? [FRONTEND_BASE_URL] : []
+const allowedOrigins = new Set(ALLOWED_FRONTEND_ORIGINS);
+const allowedHostnames = new Set(
+  ALLOWED_FRONTEND_ORIGINS.map((origin) => {
+    try {
+      return new URL(origin).hostname;
+    } catch {
+      return null;
+    }
+  }).filter(Boolean)
 );
+try {
+  const apiHostname = new URL(APP_BASE_URL).hostname;
+  if (apiHostname) {
+    allowedHostnames.add(apiHostname);
+  }
+} catch {
+  // APP_BASE_URL is validated during startup; ignore parsing errors defensively.
+}
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) return callback(null, true);
@@ -39,7 +59,11 @@ const corsOptions = {
       return callback(new Error("Not allowed by CORS"));
     }
 
-    if (allowedOrigins.has(origin)) {
+    if (
+      allowedOrigins.has(origin) ||
+      allowedOrigins.has(parsedOrigin.origin) ||
+      allowedHostnames.has(parsedOrigin.hostname)
+    ) {
       return callback(null, true);
     }
 

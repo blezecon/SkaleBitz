@@ -5,9 +5,13 @@ const buildLocalFallback = () => {
     return null;
   }
 
-  const { protocol, hostname } = window.location;
-  const fallbackPort = import.meta.env.VITE_API_FALLBACK_PORT || "4000";
-  return `${protocol}//${hostname}:${fallbackPort}`;
+  const { protocol, hostname, port } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    const fallbackPort = import.meta.env.VITE_API_FALLBACK_PORT || port || "4000";
+    return `${protocol}//${hostname}:${fallbackPort}`;
+  }
+
+  return `${protocol}//${hostname}${port ? `:${port}` : ""}`;
 };
 
 const resolveBaseUrl = () => {

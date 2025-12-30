@@ -7,6 +7,7 @@ import { createInvestmentWithTransaction } from "../services/investmentService.j
 import User from "../models/User.js";
 import { DEFAULT_TENOR_MONTHS, ensureTenorMonths } from "../utils/tenor.js";
 import { invalidateCacheForPaths } from "../middleware/cacheAndDedupe.js";
+import { buildActiveStatusFilter } from "../utils/dealStatus.js";
 
 const getDealModel = () => createDealModel(getDealsConnection());
 const getInvestmentModel = () => createInvestmentModel(getDealsConnection());
@@ -174,6 +175,16 @@ const computePerformanceMetrics = ({ repayments, cadence, startDate, totalInvest
         : null,
     utilizationPct,
   };
+};
+
+export const getActiveDealsCount = async (_req, res) => {
+  const Deal = getDealModel();
+  const count = await Deal.countDocuments({
+    verified: true,
+    ...buildActiveStatusFilter(),
+  });
+
+  res.json({ count });
 };
 
 export const listDeals = async (_req, res) => {
